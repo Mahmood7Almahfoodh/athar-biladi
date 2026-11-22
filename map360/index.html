@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>خريطة آثار بلادي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<style>
+:root{
+  /* Layout: the map of Bahrain fills the stage; a list of the four site types sits beside it like the textbook's table; each site opens a card, then a full-screen video player. */
+  --paper:#f6f1e6;
+  --panel:#fffdf8;
+  --ink:#1f2a2c;
+  --muted:#6a6152;
+  --line:rgba(110,86,44,.18);
+  --teal:#0e6a70;
+  --teal-deep:#0a4e53;
+  --sea:#cde6ec;
+  --land:#f1e4c6;
+  --coast:#b8a27a;
+  --c-temple:#2b6c96;
+  --c-burial:#94602a;
+  --c-mosque:#2f7d47;
+  --c-fort:#ad3b3b;
+  --display:"Reem Kufi","Tajawal","Segoe UI",Tahoma,sans-serif;
+  --body:"Tajawal","Segoe UI",Tahoma,Arial,sans-serif;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;overflow:hidden}
+button,a{font:inherit;color:inherit}
+:focus-visible{outline:3px solid #f2b705;outline-offset:2px}
+
+.app{height:100%;display:grid;grid-template-rows:auto 1fr;gap:10px;padding:14px 16px 16px}
+.bar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.bar .eyebrow{margin:0;font-size:14px;color:var(--muted)}
+.bar h1{margin:2px 0 0;font-family:var(--display);font-weight:700;font-size:30px;line-height:1.15;color:var(--teal-deep);text-wrap:balance}
+.bar .hint{margin:0;font-size:15px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.bar .hint b{color:var(--ink)}
+
+.grid{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px}
+.mapcard{min-height:0;background:var(--sea);border:1px solid var(--line);border-radius:18px;overflow:hidden;position:relative;display:grid;place-items:center}
+#map{width:100%;height:100%;display:block}
+.pin{cursor:pointer}
+.pin .badge{transition:transform .15s ease;transform-box:fill-box;transform-origin:center}
+.pin:hover .badge,.pin:focus-visible .badge{transform:scale(1.14)}
+.pin:focus-visible{outline:none}
+.pin:focus-visible .ring{stroke:#f2b705;stroke-width:5}
+.pin text{font-family:var(--body);font-weight:700;font-size:17px;fill:var(--ink);paint-order:stroke;stroke:#fffdf6;stroke-width:5px;stroke-linejoin:round}
+.maplabel{font-family:var(--body);font-size:15px;fill:#7b7366;paint-order:stroke;stroke:var(--land);stroke-width:4px}
+.sealabel{font-family:var(--display);font-size:22px;fill:#6f9aa6;letter-spacing:0}
+
+.list{min-height:0;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px 14px 10px}
+.list h2{font-family:var(--display);font-size:19px;margin:0 0 10px;color:var(--teal-deep)}
+.group{margin:0 0 12px}
+.group-h{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-size:16px;font-weight:700}
+.chipicon{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#fff;flex:none}
+.chipicon svg{width:17px;height:17px}
+.group-h .n{margin-inline-start:auto;font-size:13px;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+.group ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.item{width:100%;text-align:start;border:0;background:transparent;border-radius:10px;padding:7px 10px;font-size:16px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.item::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.item:hover{background:rgba(14,106,112,.08)}
+.item .seen{margin-inline-start:auto;font-size:12px;color:var(--teal);font-weight:700}
+
+/* site card */
+.modal{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;background:rgba(22,32,34,.42)}
+.site-card{position:relative;width:min(520px,100%);background:var(--panel);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.28);padding:22px 24px 20px;border-top:6px solid var(--c)}
+.site-card .x{position:absolute;top:12px;inset-inline-end:12px;width:40px;height:40px;border-radius:50%;border:0;background:#f1ebdd;cursor:pointer;display:grid;place-items:center}
+.site-card .x svg{width:18px;height:18px}
+.typechip{display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:700;color:var(--c);background:color-mix(in srgb,var(--c) 12%,#fff);border-radius:999px;padding:4px 12px 4px 6px}
+.typechip .chipicon{width:22px;height:22px}
+.typechip .chipicon svg{width:14px;height:14px}
+.site-card h2{font-family:var(--display);font-weight:700;font-size:34px;line-height:1.2;margin:10px 0 4px;color:var(--ink);text-wrap:balance}
+.unesco{margin:0 0 6px;font-size:14px;font-weight:700;color:#7a5a12;display:flex;align-items:center;gap:6px}
+.site-card .info{font-size:19px;line-height:1.75;margin:8px 0 18px;max-width:42ch}
+.actions{display:grid;gap:10px}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;border-radius:14px;padding:13px 18px;font-size:18px;font-weight:700;cursor:pointer;text-decoration:none;border:0}
+.btn svg{width:20px;height:20px;flex:none}
+.btn.primary{background:var(--teal);color:#fff}
+.btn.primary:hover{background:var(--teal-deep)}
+.btn.ghost{background:#fff;color:var(--teal-deep);border:1.5px solid rgba(14,106,112,.4)}
+.btn.ghost:hover{background:rgba(14,106,112,.06)}
+.nopano{margin:0;font-size:15px;color:var(--muted);background:#f4efe3;border-radius:12px;padding:10px 14px;line-height:1.6}
+.small{font-size:13px;color:var(--muted);margin:10px 0 0}
+
+/* player */
+.player{position:fixed;inset:0;z-index:30;background:#0d1415;display:grid;place-items:center;padding:12px}
+.stage{position:relative;width:min(100%,calc((100vh - 24px) * 16 / 9));aspect-ratio:16/9;max-height:calc(100vh - 24px);background:#9fc9d8;border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.stage:fullscreen{width:100%;height:100%;max-height:none;border-radius:0;aspect-ratio:auto}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+.titlecard{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;background:linear-gradient(rgba(10,30,34,.45),rgba(10,30,34,.2));color:#fff;text-align:center;transition:opacity .6s ease;pointer-events:none}
+.titlecard.out{opacity:0}
+.titlecard h2{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(34px,6vw,72px);text-shadow:0 4px 24px rgba(0,0,0,.35)}
+.titlecard .typechip{background:rgba(255,255,255,.92)}
+.caption{position:absolute;inset-inline-start:4%;bottom:15%;max-width:62%;background:rgba(14,26,28,.72);color:#fff;font-size:clamp(17px,2.2vw,28px);line-height:1.55;padding:.5em .9em;border-radius:12px;border-inline-start:6px solid var(--c,#0e6a70);transition:opacity .45s ease,transform .45s ease;opacity:0;transform:translateY(8px)}
+.caption.on{opacity:1;transform:none}
+.namebug{position:absolute;top:3%;inset-inline-start:3%;background:rgba(255,253,248,.92);color:var(--ink);font-family:var(--display);font-weight:700;font-size:clamp(15px,1.7vw,22px);padding:.3em .8em;border-radius:10px;display:flex;align-items:center;gap:.5em}
+.namebug .chipicon{width:1.4em;height:1.4em}
+.namebug .chipicon svg{width:.85em;height:.85em}
+.drawnote{position:absolute;top:3%;inset-inline-end:3%;font-size:clamp(11px,1.1vw,14px);color:#fff;background:rgba(14,26,28,.55);padding:.35em .8em;border-radius:999px}
+.controls{position:absolute;inset-inline:0;bottom:0;display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(transparent,rgba(8,16,18,.75));color:#fff}
+.controls button{width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;display:grid;place-items:center;flex:none}
+.controls button:hover{background:rgba(255,255,255,.26)}
+.controls svg{width:20px;height:20px}
+#seek{flex:1;accent-color:#f2b705;height:6px;cursor:pointer}
+#time{font-variant-numeric:tabular-nums;font-size:15px;min-width:90px;text-align:center}
+.endcard{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:14px;background:rgba(10,24,26,.55)}
+.endcard h3{margin:0;color:#fff;font-family:var(--display);font-size:clamp(24px,3vw,40px)}
+.endcard .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.endcard .btn{min-width:200px}
+.endcard .btn.ghost{background:rgba(255,255,255,.92)}
+
+/* real-photo slideshow */
+.slides{position:fixed;inset:0;z-index:30;background:#0d1415;display:grid;place-items:center;padding:12px}
+.sstage{position:relative;width:min(100%,calc((100vh - 24px) * 16 / 9));aspect-ratio:16/9;max-height:calc(100vh - 24px);background:#111;border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.sstage:fullscreen{width:100%;height:100%;max-height:none;border-radius:0;aspect-ratio:auto}
+.slide{position:absolute;inset:0;opacity:0;transition:opacity 1s ease;overflow:hidden}
+.slide.on{opacity:1}
+.slide .bg{position:absolute;inset:-40px;background-size:cover;background-position:center;filter:blur(28px) brightness(.55);transform:scale(1.1)}
+.slide .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.slide .ph.cover{object-fit:cover}
+.slide.kb .ph{animation:kb 7.5s ease-out both}
+.slide.kb.alt .ph{animation-name:kb2}
+.slide.pan .ph{object-fit:cover;object-position:0% 50%;animation:pan 9s linear both}
+@keyframes kb{from{transform:scale(1)}to{transform:scale(1.08) translate(-1%,-1%)}}
+@keyframes kb2{from{transform:scale(1.08) translate(1%,1%)}to{transform:scale(1)}}
+@keyframes pan{from{object-position:0% 50%}to{object-position:100% 50%}}
+.bars{position:absolute;top:12px;inset-inline:16px;display:flex;gap:6px;z-index:3}
+.bars span{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.3);overflow:hidden}
+.bars i{display:block;height:100%;width:0;background:#fff}
+.stitle{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;background:linear-gradient(rgba(8,18,20,.55),rgba(8,18,20,.35));color:#fff;text-align:center;transition:opacity .7s ease;z-index:2;pointer-events:none}
+.stitle.out{opacity:0}
+.stitle h2{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(34px,6vw,72px);text-shadow:0 4px 24px rgba(0,0,0,.4)}
+.stitle .typechip{background:rgba(255,255,255,.92)}
+.scap{position:absolute;inset-inline-start:4%;bottom:16%;max-width:64%;background:rgba(14,26,28,.74);color:#fff;font-size:clamp(17px,2.2vw,28px);line-height:1.55;padding:.5em .9em;border-radius:12px;border-inline-start:6px solid var(--c,#0e6a70);z-index:2;transition:opacity .4s ease}
+.scap.hide{opacity:0}
+.scredit{position:absolute;inset-inline-end:3%;bottom:calc(64px + 1%);font-size:clamp(10px,1vw,13px);color:rgba(255,255,255,.85);background:rgba(0,0,0,.45);padding:.25em .7em;border-radius:999px;z-index:2;text-decoration:none;max-width:60%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scredit:hover{color:#fff;text-decoration:underline}
+.snb{position:absolute;top:calc(12px + 16px);inset-inline-start:3%;z-index:2}
+.scount{font-variant-numeric:tabular-nums;font-size:15px;min-width:60px;text-align:center}
+.sctrl{position:absolute;inset-inline:0;bottom:0;display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(transparent,rgba(8,16,18,.8));color:#fff;z-index:3}
+.sctrl button{width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;display:grid;place-items:center;flex:none}
+.sctrl button:hover{background:rgba(255,255,255,.26)}
+.sctrl svg{width:20px;height:20px}
+.sctrl .grow{flex:1}
+.btn.soft{background:#f1ebdd;color:var(--ink)}
+.btn.soft:hover{background:#e9e0cc}
+@media (prefers-reduced-motion: reduce){.slide .ph,.slide.pan .ph{animation:none !important}.slide{transition:none}}
+@media (max-width:900px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100%}
+  .grid{grid-template-columns:1fr}
+  .mapcard{height:78vh}
+  .bar h1{font-size:24px}
+}
+@media (prefers-reduced-motion: reduce){
+  .caption,.titlecard,.pin .badge{transition:none}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="ic-temple" viewBox="0 0 24 24"><g fill="currentColor"><rect x="3" y="18" width="18" height="3" rx="1"/><rect x="4.5" y="9" width="3.6" height="8" rx="1.4"/><rect x="10.2" y="6" width="3.6" height="11" rx="1.4"/><rect x="15.9" y="10.5" width="3.6" height="6.5" rx="1.4"/></g></symbol>
+    <symbol id="ic-burial" viewBox="0 0 24 24"><g fill="currentColor"><path d="M1.5 20c1.6-5.8 4.3-9 7.5-9s5.9 3.2 7.5 9z"/><path d="M11 20c1.3-4.2 3.4-6.5 5.9-6.5S21.5 15.8 22.6 20z" opacity=".75"/></g></symbol>
+    <symbol id="ic-mosque" viewBox="0 0 24 24"><g fill="currentColor"><rect x="3.2" y="5" width="2.8" height="16" rx="1"/><path d="M4.6 1.5l1.6 3.5H3z"/><path d="M8.5 21v-6.5c0-3.4 2.6-6 6-6.5 3.4.5 6 3.1 6 6.5V21z"/><rect x="14" y="5" width="1" height="3"/></g></symbol>
+    <symbol id="ic-fort" viewBox="0 0 24 24"><path fill="currentColor" d="M3 21V8h2.6v2.4h2.3V8h2.6v2.4h3V8h2.6v2.4h2.3V8H21v13h-6.5v-4.2a2.5 2.5 0 0 0-5 0V21z"/></symbol>
+    <symbol id="ic-play" viewBox="0 0 24 24"><path fill="currentColor" d="M7 4.5v15l12-7.5z"/></symbol>
+    <symbol id="ic-pause" viewBox="0 0 24 24"><g fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></g></symbol>
+    <symbol id="ic-replay" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="ic-full" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+    <symbol id="ic-360" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><ellipse cx="12" cy="12" rx="9.5" ry="4.2"/><path d="M12 3v18"/><path d="M15.5 17.6l-2.6.8.8 2.5"/></g></symbol>
+    <symbol id="ic-out" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="ic-prev" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="ic-next" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="ic-photo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.6"/></g></symbol>
+    <symbol id="ic-cube" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></g></symbol>
+    <symbol id="ic-star" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.5l2.9 6 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.2 1.3-6.6-4.9-4.6 6.6-.8z"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <header class="bar">
+    <div>
+      <p class="eyebrow">الدرس الثاني: آثار بلادي</p>
+      <h1>خريطة المواقع الأثرية في مملكة البحرين</h1>
+    </div>
+    <p class="hint">انقر على أي موقع في الخريطة أو في القائمة لتشاهد <b>جولته</b></p>
+  </header>
+  <main class="grid">
+    <section class="mapcard" aria-label="خريطة مملكة البحرين وعليها المواقع الأثرية">
+      <svg id="map" role="group" aria-label="خريطة البحرين"></svg>
+    </section>
+    <aside class="list" aria-label="المواقع الأثرية حسب النوع">
+      <h2>المواقع حسب النوع</h2>
+      <div id="groups"></div>
+    </aside>
+  </main>
+</div>
+
+<div class="modal" id="siteModal" hidden>
+  <div class="site-card" role="dialog" aria-modal="true" aria-labelledby="siteName" id="siteCard">
+    <button class="x" id="closeCard" type="button" aria-label="إغلاق"><svg><use href="#ic-close"/></svg></button>
+    <span class="typechip" id="siteType"></span>
+    <h2 id="siteName"></h2>
+    <p class="unesco" id="siteUnesco" hidden><svg width="16" height="16"><use href="#ic-star"/></svg><span></span></p>
+    <p class="info" id="siteInfo"></p>
+    <div class="actions">
+      <button class="btn primary" id="photosBtn" type="button"><svg><use href="#ic-photo"/></svg>شاهد صور الموقع الحقيقية</button>
+      <p class="nopano" id="noPhotos" hidden>لا توجد صور حرّة الاستخدام لهذا الموقع حالياً، فشاهد الرسم ثلاثي الأبعاد.</p>
+      <button class="btn soft" id="playBtn" type="button"><svg><use href="#ic-cube"/></svg>شاهد الرسم ثلاثي الأبعاد</button>
+      <a class="btn ghost" id="panoBtn" href="#" target="_blank" rel="noopener"><svg><use href="#ic-360"/></svg>جولة 360° حقيقية<svg><use href="#ic-out"/></svg></a>
+      <p class="nopano" id="noPano" hidden>لا توجد جولة 360° حقيقية واضحة لهذا الموقع على الإنترنت حالياً.</p>
+    </div>
+    <p class="small" id="panoNote">تُفتح الجولة الحقيقية في نافذة جديدة من خرائط Google.</p>
+  </div>
+</div>
+
+<div class="slides" id="slides" hidden role="dialog" aria-modal="true" aria-label="صور الموقع">
+  <div class="sstage" id="sstage">
+    <div class="slide" id="slideA"><div class="bg"></div><img class="ph" alt=""></div>
+    <div class="slide" id="slideB"><div class="bg"></div><img class="ph" alt=""></div>
+    <div class="bars" id="sbars"></div>
+    <div class="namebug snb" id="sNameBug"></div>
+    <div class="scap" id="sCap" aria-live="polite"></div>
+    <a class="scredit" id="sCredit" href="#" target="_blank" rel="noopener"></a>
+    <div class="stitle" id="sTitle"></div>
+    <div class="sctrl">
+      <button id="sPrev" type="button" aria-label="الصورة السابقة"><svg><use href="#ic-prev"/></svg></button>
+      <button id="sPlay" type="button" aria-label="إيقاف مؤقت"><svg><use href="#ic-pause"/></svg></button>
+      <button id="sNext" type="button" aria-label="الصورة التالية"><svg><use href="#ic-next"/></svg></button>
+      <span class="scount" id="sCount"></span>
+      <span class="grow"></span>
+      <button id="sDraw" type="button" aria-label="الرسم ثلاثي الأبعاد"><svg><use href="#ic-cube"/></svg></button>
+      <button id="sFs" type="button" aria-label="ملء الشاشة"><svg><use href="#ic-full"/></svg></button>
+      <button id="sClose" type="button" aria-label="إغلاق الصور"><svg><use href="#ic-close"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="player" id="player" hidden role="dialog" aria-modal="true" aria-label="جولة الفيديو">
+  <div class="stage" id="stage">
+    <canvas id="gl"></canvas>
+    <div class="namebug" id="nameBug"></div>
+    <div class="drawnote">رسم مبسّط للموقع</div>
+    <div class="caption" id="caption"></div>
+    <div class="titlecard" id="titleCard"></div>
+    <div class="endcard" id="endCard" hidden>
+      <h3 id="endTitle"></h3>
+      <div class="row">
+        <button class="btn primary" id="replayBtn" type="button"><svg><use href="#ic-replay"/></svg>إعادة المشاهدة</button>
+        <button class="btn ghost" id="backBtn" type="button">العودة إلى الخريطة</button>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="ppBtn" type="button" aria-label="إيقاف مؤقت"><svg><use href="#ic-pause"/></svg></button>
+      <button id="rsBtn" type="button" aria-label="من البداية"><svg><use href="#ic-replay"/></svg></button>
+      <input id="seek" type="range" min="0" max="1000" value="0" aria-label="موضع الفيديو">
+      <span id="time">٠:٠٠ / ٠:٠٠</span>
+      <button id="fsBtn" type="button" aria-label="ملء الشاشة"><svg><use href="#ic-full"/></svg></button>
+      <button id="closeBtn" type="button" aria-label="إغلاق الفيديو"><svg><use href="#ic-close"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const $ = s => document.querySelector(s);
+const ar = n => Number(n).toLocaleString('ar-EG');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MAP = {"W": 888.7, "H": 825.0, "main": "M1075.0,2050.5L1068.1,2054.4L1067.4,2061.3L1051.3,2063.7L1057.4,2069.8L1060.5,2094.5L1073.2,2104.5L1067.1,2118.4L1075.5,2134.6L1075.9,2146.2L1081.3,2150.1L1086.6,2141.6L1113.4,2132.7L1128.7,2139.2L1144.7,2139.6L1150.8,2128.4L1142.4,2127.6L1143.2,2123.7L1156.1,2109.8L1153.8,2100.6L1140.8,2092.1L1138.5,2085.1L1124.0,2087.9L1113.3,2081.3L1085.8,2080.6L1083.4,2075.2L1091.5,2067.4L1091.1,2059.0L1075.0,2050.5ZM1142.2,1972.4L1135.3,1973.2L1134.6,1988.6L1128.4,1987.9L1126.9,1993.3L1113.9,1996.4L1108.6,2013.4L1104.0,2013.4L1107.8,2023.4L1116.3,2028.0L1123.2,2050.4L1125.5,2039.6L1132.3,2033.0L1143.8,2031.1L1157.2,2021.0L1159.1,2008.7L1165.5,1999.4L1160.6,1986.3L1157.5,1990.1L1144.5,1982.4L1142.2,1972.4ZM1106.4,1835.8L1098.4,1838.9L1099.2,1848.2L1087.7,1849.7L1089.2,1855.9L1080.8,1854.4L1083.9,1845.9L1073.9,1851.3L1069.3,1864.4L1062.5,1867.5L1067.4,1871.4L1065.5,1879.9L1054.8,1880.7L1051.0,1871.4L1044.9,1874.9L1029.6,1872.2L987.6,1931.7L973.4,1943.2L960.3,1966.4L953.2,1969.7L946.5,1960.0L940.3,1960.5L941.0,1965.1L954.0,1971.6L955.9,1982.4L943.0,2005.9L948.8,2021.7L945.8,2045.7L935.2,2067.7L928.3,2072.8L938.0,2068.1L945.6,2078.3L933.3,2091.0L942.5,2085.4L943.4,2088.6L946.7,2080.2L951.0,2086.8L944.2,2088.2L957.2,2089.3L966.5,2101.0L968.7,2115.2L967.4,2133.8L961.1,2150.1L967.4,2170.1L965.8,2196.6L957.6,2217.5L942.4,2239.3L943.7,2263.9L966.7,2286.1L990.4,2297.5L1000.3,2296.1L1015.8,2302.3L1042.2,2319.6L1039.5,2313.5L984.4,2282.3L982.5,2277.6L983.6,2266.1L993.6,2259.9L998.9,2242.9L1003.8,2240.5L999.2,2231.3L1001.9,2223.9L1017.2,2210.8L1035.5,2205.7L1035.1,2189.5L1033.2,2187.2L1033.9,2191.1L1029.4,2191.1L1024.7,2178.7L1003.4,2191.9L991.1,2191.2L991.1,2184.2L1001.0,2172.2L1011.7,2166.4L1002.2,2154.1L1002.9,2146.3L1008.6,2136.7L1015.5,2134.7L1015.5,2123.6L1030.0,2121.6L1033.8,2130.1L1040.3,2120.0L1037.6,2112.3L1030.7,2110.8L1032.2,2094.6L1024.6,2089.2L1023.0,2077.6L1009.3,2077.6L1006.2,2059.1L1001.6,2058.3L998.1,2048.3L991.6,2044.5L991.2,2034.4L993.9,2021.3L1010.7,2015.5L1017.6,2000.4L1025.2,2012.7L1039.7,2004.2L1054.2,1987.6L1069.5,1986.0L1076.0,1990.3L1076.8,1996.4L1068.0,2002.6L1084.1,1996.8L1084.1,1991.0L1096.7,1984.1L1095.5,1976.3L1089.4,1974.0L1088.6,1969.4L1074.1,1967.1L1071.0,1948.6L1057.3,1952.1L1053.8,1947.1L1057.2,1937.4L1062.2,1935.5L1060.7,1928.5L1079.4,1923.1L1087.8,1900.7L1096.2,1895.3L1094.2,1862.8L1106.8,1849.7L1102.6,1844.3L1106.4,1835.8ZM1062.3,1761.4L1057.7,1770.3L1045.5,1769.9L1034.4,1780.3L1042.8,1796.5L1047.8,1796.5L1044.8,1801.2L1076.1,1792.2L1081.8,1786.4L1082.2,1766.3L1078.4,1771.8L1070.7,1763.3L1062.3,1761.4ZM1019.4,1761.1L1014.9,1768.8L997.3,1778.1L998.4,1785.8L1011.8,1797.4L1031.3,1789.6L1027.9,1767.2L1020.2,1766.5L1019.4,1761.1ZM617.3,475.2L594.9,476.0L559.1,512.8L564.6,518.6L559.4,525.6L574.3,542.3L572.2,558.1L577.6,571.6L585.6,568.5L589.1,570.7L585.9,575.5L609.6,589.0L612.2,584.7L614.2,591.3L607.5,600.0L611.7,606.7L608.9,610.3L644.9,679.2L648.0,702.5L651.4,697.7L652.5,701.6L657.1,703.4L657.6,706.2L668.4,708.5L667.6,700.8L657.5,700.8L657.1,702.9L652.8,701.0L652.5,697.5L655.6,698.4L662.7,697.7L656.6,697.7L656.6,694.6L659.6,694.5L658.0,692.3L661.1,692.6L662.6,694.1L668.4,694.6L662.5,693.6L662.8,690.7L668.6,692.8L664.2,688.1L669.1,684.3L665.1,686.3L668.0,681.4L657.4,671.7L661.0,667.5L654.8,668.4L650.7,663.5L649.4,645.1L656.7,643.7L649.1,642.1L656.4,639.6L650.0,640.8L654.3,637.6L646.2,635.6L645.9,624.6L669.1,607.0L674.9,618.3L699.5,605.6L687.3,582.5L707.8,572.4L749.0,570.0L758.4,563.0L749.9,558.5L732.1,568.8L727.1,560.1L736.4,554.2L732.6,553.6L702.4,570.1L732.7,550.4L641.6,600.6L632.4,573.1L637.9,568.4L640.4,573.0L644.5,569.3L639.6,558.1L643.8,558.6L644.3,555.3L639.9,554.8L645.0,538.9L641.4,538.4L641.4,527.3L629.8,512.7L643.3,513.8L651.8,502.4L640.6,502.5L640.7,495.0L630.9,495.2L622.5,502.1L633.6,492.4L633.7,484.9L637.4,486.0L629.6,481.7L629.0,474.9L617.3,475.2ZM538.1,454.4L533.8,454.5L533.5,462.4L538.1,483.3L526.5,470.5L530.1,459.7L518.4,466.3L527.8,473.9L524.0,474.7L522.3,470.0L514.7,476.0L513.0,489.3L509.7,488.7L509.5,502.8L515.2,506.2L533.0,496.3L552.7,504.8L538.8,473.4L538.1,454.4ZM27.1,442.4L19.5,446.7L20.6,453.6L42.0,461.7L43.2,511.3L22.2,492.1L-25.1,477.9L-46.6,476.0L20.2,492.6L41.7,515.3L37.9,518.0L23.0,505.3L15.1,519.3L-22.0,498.1L-46.4,490.8L-46.4,494.4L-20.4,502.2L19.2,522.3L17.5,526.8L12.0,527.0L12.1,534.3L7.8,533.6L-4.1,544.8L-13.3,543.3L-21.7,551.0L-24.0,556.1L-16.3,549.5L-17.1,554.9L-24.7,559.6L-22.8,564.2L-32.3,573.9L-30.3,599.7L-19.5,610.5L-22.8,632.1L-12.8,635.9L-10.1,642.1L-15.0,663.5L22.2,671.2L36.6,663.1L54.2,662.9L56.5,669.1L56.5,662.7L64.6,663.0L91.6,675.4L92.9,669.9L85.2,654.7L93.2,630.3L77.1,626.4L74.4,567.4L85.4,541.4L81.9,531.5L92.1,528.5L81.5,530.3L77.4,516.1L43.6,514.6L47.2,501.8L43.4,468.2L52.2,460.1L59.3,463.5L59.4,455.9L54.6,454.7L59.6,454.0L49.8,453.8L44.9,451.7L47.2,448.3L40.6,450.0L35.4,445.3L30.0,447.1L27.5,444.5L31.8,443.7L27.1,442.4ZM521.6,264.3L516.2,258.1L512.1,263.5L503.4,264.2L500.2,261.1L503.9,258.8L500.6,260.3L493.8,266.2L492.0,271.8L497.8,270.7L498.3,278.4L511.5,289.2L516.8,286.2L521.3,289.6L523.7,285.6L526.7,289.2L521.8,303.9L505.1,314.6L499.8,313.0L486.0,320.2L483.3,317.9L481.9,326.4L485.0,328.0L467.0,335.0L461.0,332.5L459.2,310.8L452.3,308.2L448.2,300.6L444.7,301.4L446.8,307.6L449.9,305.4L446.5,310.3L439.9,310.7L443.5,302.7L440.1,299.6L445.6,296.8L434.9,283.2L432.7,311.0L418.7,310.5L429.6,303.4L425.9,292.9L423.1,292.8L427.1,297.4L424.8,301.5L415.9,299.4L420.7,292.6L415.8,294.9L414.1,306.8L406.4,303.2L408.9,300.2L403.4,301.1L400.9,296.0L403.3,292.0L407.1,293.4L404.2,290.4L392.7,296.1L395.1,289.8L386.9,290.5L388.2,286.6L383.4,284.7L391.1,298.9L370.5,308.5L359.6,319.2L354.8,331.3L348.2,323.2L345.6,328.4L341.2,324.6L341.1,328.5L333.8,328.3L333.5,325.0L321.6,327.4L333.0,318.3L321.3,327.2L302.4,325.0L259.4,328.8L217.1,337.4L221.6,330.9L216.8,336.4L188.5,347.4L191.4,356.5L175.6,369.1L170.6,361.3L183.3,349.1L182.3,345.5L219.7,327.0L230.3,309.6L178.0,328.7L184.6,343.8L175.7,329.8L144.8,343.8L140.2,350.4L133.9,348.9L128.8,384.4L136.1,385.5L164.6,359.9L174.9,369.7L165.8,378.5L163.9,372.7L154.3,376.5L147.6,383.0L150.6,384.1L147.6,389.4L136.0,392.5L148.9,391.8L152.1,419.0L159.4,418.3L154.5,420.5L160.9,430.5L170.8,426.4L175.2,432.2L175.8,444.3L170.6,445.3L169.1,452.9L172.3,492.6L169.9,495.8L164.6,492.1L162.5,497.9L166.9,501.2L155.5,517.8L121.0,518.4L161.1,519.0L116.0,525.8L163.3,520.2L162.5,523.7L159.1,521.9L162.5,526.0L159.0,532.0L150.3,532.4L157.0,534.3L155.1,537.1L147.7,538.3L154.3,539.5L152.2,554.0L158.0,554.3L165.6,586.9L153.6,595.7L166.3,591.1L169.2,596.9L165.3,597.8L169.9,598.7L172.1,608.5L153.8,620.8L156.3,633.3L170.6,623.2L176.3,629.3L174.2,632.3L180.3,628.6L171.3,638.0L182.6,634.4L184.7,640.9L181.1,635.5L171.7,638.4L173.4,644.3L184.7,641.9L180.5,643.0L184.9,649.8L181.3,651.5L185.3,650.6L188.7,658.0L183.4,659.8L188.7,659.1L193.9,667.6L191.7,670.0L196.5,672.5L196.4,682.4L199.6,681.3L195.5,683.2L204.0,701.5L212.4,700.9L205.6,705.8L211.1,711.5L217.7,710.7L213.9,714.5L220.1,717.2L217.6,720.2L221.0,724.7L225.6,719.5L228.7,724.4L222.9,728.1L230.1,726.4L225.9,730.6L230.6,729.8L228.0,734.0L232.1,735.1L228.6,737.2L232.1,735.3L236.6,739.8L243.2,780.3L234.9,786.2L241.9,784.5L237.5,790.6L242.7,788.3L243.8,795.5L239.0,797.0L244.0,796.0L247.8,802.7L245.2,812.1L237.5,810.5L245.1,812.2L242.7,827.9L239.3,828.6L243.6,828.3L244.0,835.4L238.4,835.3L243.7,836.4L241.0,847.1L244.9,847.0L252.1,862.8L251.4,872.5L247.8,873.4L250.9,876.3L248.5,888.1L257.2,895.9L254.0,916.2L250.9,920.5L246.2,918.5L251.0,922.3L247.7,922.9L234.7,956.4L227.8,966.6L223.4,965.7L225.9,970.5L219.0,975.8L222.7,982.5L217.5,989.1L222.1,987.9L224.5,1001.9L219.5,1024.4L205.8,1042.8L199.1,1043.8L204.6,1045.0L202.7,1049.7L182.1,1075.0L177.4,1091.3L174.1,1093.2L173.5,1090.8L169.7,1094.2L172.3,1092.7L171.2,1098.5L174.7,1098.9L175.1,1107.7L171.2,1111.2L178.8,1119.9L180.4,1131.3L179.0,1141.3L172.6,1142.4L179.0,1141.6L195.1,1199.9L201.1,1199.0L208.8,1217.1L227.8,1235.1L265.1,1254.1L333.7,1334.4L339.8,1337.5L353.2,1364.9L345.9,1345.6L332.4,1322.5L339.2,1318.2L352.0,1336.3L372.5,1389.5L417.2,1455.9L427.3,1478.6L440.4,1564.8L447.7,1585.1L457.5,1597.9L457.2,1610.7L472.7,1633.2L481.0,1660.4L471.9,1627.3L479.9,1606.2L516.1,1569.4L541.3,1579.8L536.9,1569.9L544.3,1573.6L544.7,1554.7L541.6,1554.7L538.7,1569.0L528.5,1567.5L521.0,1559.9L521.9,1549.5L531.9,1543.5L523.7,1549.6L521.9,1558.0L527.2,1565.4L538.4,1565.2L535.3,1554.9L542.1,1550.3L531.4,1545.0L539.0,1544.6L536.0,1524.9L541.3,1524.5L546.2,1537.5L557.6,1548.1L560.9,1543.9L556.3,1543.2L549.7,1527.8L550.8,1505.4L559.2,1505.6L561.2,1498.2L570.4,1493.5L581.7,1491.7L583.5,1494.7L584.4,1489.5L574.6,1487.4L548.4,1491.3L560.8,1483.2L552.7,1478.1L559.7,1479.5L564.7,1473.4L575.0,1479.2L579.6,1471.2L584.7,1474.3L586.6,1471.2L578.0,1461.0L581.2,1450.6L575.5,1442.1L576.8,1433.1L582.9,1427.2L576.9,1441.8L588.4,1453.0L593.5,1449.9L597.6,1453.8L599.7,1449.6L593.9,1443.2L585.6,1449.5L582.2,1443.4L587.7,1431.8L595.4,1431.1L593.2,1437.3L597.2,1442.3L605.7,1438.4L598.7,1435.3L598.9,1430.4L584.2,1428.0L578.4,1401.0L582.4,1397.8L580.9,1375.1L587.7,1345.7L588.1,1317.3L591.9,1318.0L593.8,1313.4L591.3,1307.4L595.4,1299.9L612.1,1299.3L592.1,1299.3L586.5,1302.5L580.0,1298.8L583.9,1298.1L581.4,1292.9L588.6,1283.3L598.3,1237.0L603.7,1229.4L596.1,1218.6L598.1,1193.8L604.8,1190.9L600.1,1187.9L604.1,1183.9L625.5,1183.0L603.9,1182.9L605.9,1178.0L602.8,1175.9L607.1,1172.1L603.4,1169.5L605.8,1161.1L600.8,1161.0L603.6,1141.6L600.5,1123.9L610.6,1123.7L606.3,1119.9L617.6,1124.9L618.6,1122.2L604.1,1116.1L607.1,1108.0L611.7,1108.5L607.7,1106.7L613.7,1104.9L609.7,1093.3L614.4,1059.8L623.2,1060.0L616.4,1059.3L615.2,1053.2L620.9,1039.3L620.2,1020.3L627.5,1022.0L628.5,1018.4L630.1,1009.9L624.4,1008.3L625.1,1005.1L641.3,1009.0L643.8,994.7L632.8,990.8L632.0,965.9L632.8,959.9L645.6,959.8L642.3,945.2L649.4,942.9L649.8,936.3L645.8,934.2L637.1,942.1L635.7,938.8L652.3,916.4L644.0,906.2L639.6,910.5L622.4,898.1L615.4,853.3L620.3,827.0L632.9,824.5L625.8,804.9L636.2,807.6L644.6,804.8L644.3,758.2L625.1,758.7L616.3,754.1L617.9,748.6L644.5,748.5L643.9,737.1L612.8,737.5L612.7,732.2L630.2,709.8L645.9,721.7L648.5,719.8L636.1,710.8L647.2,705.3L636.4,704.6L644.8,702.2L638.3,696.5L639.6,692.1L644.4,693.9L647.0,702.8L642.9,685.6L637.4,688.4L627.8,671.9L633.0,669.3L627.1,671.6L616.6,654.9L612.3,631.2L604.6,619.8L608.3,611.5L606.4,600.6L594.2,588.0L571.9,592.3L572.1,580.5L563.1,580.6L561.4,587.1L558.9,580.4L552.8,582.0L549.3,564.5L538.7,552.5L532.8,552.8L528.6,545.3L523.4,545.0L525.2,542.1L509.5,533.0L507.2,535.3L509.8,528.9L500.7,517.6L496.9,518.6L490.3,507.2L481.6,504.1L478.2,495.9L474.4,496.9L477.2,495.1L472.6,490.1L471.6,476.7L477.9,474.9L476.6,469.7L470.2,470.6L468.5,465.5L476.1,462.6L472.2,446.4L460.3,448.8L462.1,444.1L470.1,443.2L462.3,441.1L466.1,432.4L477.2,435.7L477.9,426.6L480.6,435.7L491.1,435.1L486.6,430.0L521.9,431.9L537.2,442.3L537.9,450.5L540.0,447.7L553.3,451.5L577.7,438.2L579.5,444.3L584.8,444.9L577.9,437.6L586.2,433.3L594.7,437.1L598.7,431.3L601.7,440.1L604.2,432.3L623.9,444.1L604.5,431.7L628.1,407.6L624.4,402.8L626.3,392.4L636.1,382.0L633.5,380.1L627.0,387.9L628.9,385.2L618.1,385.3L618.7,381.6L607.8,379.8L606.2,384.7L606.7,364.4L599.6,364.4L596.1,369.1L596.0,363.0L606.6,357.2L595.5,353.9L584.9,358.9L584.6,363.9L579.3,364.7L578.9,371.1L569.6,370.8L562.8,365.0L584.3,362.0L585.0,358.0L577.1,359.7L580.4,353.6L575.4,348.7L569.4,352.0L570.8,348.7L568.1,350.7L565.4,346.0L564.8,335.1L572.3,334.5L571.4,339.0L575.1,334.1L572.5,335.9L572.2,329.5L572.2,334.2L564.7,334.8L561.1,323.4L572.6,312.6L559.9,317.1L566.3,313.5L560.2,303.7L567.8,300.3L572.8,304.4L571.3,298.6L576.6,295.1L573.8,290.9L556.1,299.4L546.9,297.3L548.0,278.0L542.0,286.0L532.6,287.0L521.6,264.3ZM293.7,259.2L290.8,246.6L261.2,256.5L261.0,286.8L295.3,270.7L302.8,292.2L313.1,289.3L303.9,290.7L296.6,270.4L300.7,265.1L293.7,259.2ZM248.0,249.1L252.5,244.5L249.2,238.6L229.3,251.9L221.1,247.0L208.0,254.6L202.5,265.6L205.7,272.4L216.7,272.9L219.3,277.4L214.9,281.8L185.5,284.1L172.8,289.1L176.9,291.5L175.2,295.2L164.4,294.9L148.5,304.0L135.8,326.3L145.1,342.4L175.2,328.4L168.3,315.0L166.7,296.8L170.4,297.5L173.5,312.0L198.4,303.9L207.3,306.2L214.8,302.2L220.5,289.1L224.4,293.6L241.5,282.0L247.8,266.9L244.8,263.7L237.3,272.6L233.6,265.5L248.0,249.1ZM692.0,40.7L691.0,50.6L702.9,47.7L706.6,54.8L690.7,52.6L684.2,62.8L674.4,61.3L666.3,66.4L665.5,69.4L669.6,66.8L664.0,77.2L672.1,66.9L675.8,73.1L672.1,79.8L682.3,81.3L687.4,70.2L685.3,80.7L694.1,86.5L690.6,90.2L679.8,86.5L660.9,91.9L663.0,77.3L641.5,64.1L652.2,45.5L645.3,49.7L639.7,61.0L629.5,65.5L628.3,70.8L640.0,76.4L643.2,85.0L624.8,75.6L604.5,104.1L676.6,150.8L664.4,162.2L668.3,165.4L664.7,172.4L636.7,169.8L636.6,163.0L633.7,163.1L634.1,170.3L627.2,159.3L629.4,149.6L623.2,149.6L623.3,157.3L633.2,169.9L624.5,170.9L626.9,164.1L619.3,160.6L617.2,152.9L613.1,159.6L620.9,163.7L608.3,168.4L616.7,170.4L622.8,166.9L624.2,171.2L612.0,174.4L611.8,187.4L597.4,184.7L600.2,191.7L593.3,195.7L574.6,186.3L570.6,187.8L566.8,179.4L567.6,183.7L562.0,185.8L551.1,184.3L538.7,165.9L538.4,158.1L542.2,157.8L533.6,153.9L526.2,158.5L525.9,154.3L523.4,157.7L515.7,154.8L519.0,151.3L513.5,154.0L503.1,150.5L502.6,161.2L515.3,167.0L513.1,174.7L505.1,176.0L502.5,183.1L512.9,189.6L515.0,186.3L525.3,190.9L541.4,210.2L546.1,238.0L540.7,243.5L531.6,245.2L528.3,237.9L533.2,252.3L538.9,260.0L550.0,271.7L561.0,256.3L572.9,258.7L576.0,287.8L600.8,308.5L598.7,311.0L615.3,304.4L617.7,306.5L614.4,311.3L618.5,306.5L618.3,294.6L624.2,296.9L620.5,307.4L624.7,296.4L621.3,285.2L631.5,261.3L625.8,257.5L629.5,250.4L627.5,243.4L656.3,248.8L631.7,259.1L631.4,275.2L642.7,288.8L637.2,294.3L638.8,301.0L657.1,305.1L655.8,317.8L660.3,324.8L664.1,311.1L673.8,302.4L660.3,309.5L657.5,303.0L678.4,292.9L675.7,295.8L679.6,308.9L684.8,308.8L686.0,298.9L694.9,302.9L694.9,308.6L684.6,309.4L691.9,313.7L684.5,314.2L684.7,319.1L694.7,319.1L695.8,332.3L701.5,332.7L678.2,334.7L686.1,336.9L686.1,340.7L678.5,341.8L678.1,347.8L685.0,345.4L686.5,357.0L691.1,358.1L647.4,358.2L646.6,367.0L641.1,372.8L643.7,374.8L654.4,364.5L665.6,360.7L707.2,360.5L709.1,367.6L713.8,367.1L714.9,381.6L710.6,382.2L707.7,375.8L701.0,375.9L701.4,379.7L718.7,408.3L724.2,427.0L721.5,428.6L728.3,428.5L732.9,441.9L730.8,453.6L741.9,479.9L747.4,480.1L742.8,470.9L749.2,479.0L757.4,475.1L755.1,470.4L765.7,465.1L758.1,462.2L760.9,456.5L752.0,437.7L763.8,431.0L778.9,460.3L794.9,451.9L806.7,469.6L790.7,433.9L803.6,427.9L792.0,405.3L791.9,376.1L830.3,376.1L860.8,435.8L857.4,437.4L860.1,442.7L852.8,446.4L878.1,496.1L889.6,484.1L825.3,361.0L827.5,357.8L853.8,357.8L849.8,348.5L837.4,348.5L837.2,356.4L828.0,356.7L824.3,360.2L806.2,356.6L745.0,357.2L741.1,355.6L745.0,351.1L744.3,341.0L722.9,341.0L722.9,333.9L728.9,333.6L728.6,328.7L722.9,328.7L723.1,312.0L729.1,310.3L729.3,298.2L725.4,294.4L725.7,291.5L730.6,294.0L725.6,290.7L728.2,273.4L761.7,275.5L762.9,253.6L740.3,252.8L739.1,272.5L728.4,271.8L733.6,232.7L739.8,232.6L739.9,229.6L735.8,232.1L735.9,227.7L739.7,227.5L733.4,224.9L745.8,222.7L744.3,230.7L751.3,228.9L744.2,232.9L746.6,236.1L779.6,228.3L784.9,218.2L773.2,203.0L759.4,197.5L755.1,212.9L746.4,220.7L733.1,222.9L728.4,209.4L735.7,201.6L739.3,202.4L739.4,208.6L754.2,208.0L754.2,197.7L737.1,198.0L741.7,187.1L757.2,187.8L762.4,177.3L751.3,170.5L757.5,168.0L757.5,162.6L750.6,161.4L756.1,158.5L754.2,152.7L748.2,154.4L725.8,147.7L726.0,132.7L719.0,139.9L720.5,154.0L716.0,153.0L713.1,158.2L725.5,157.3L724.4,162.5L719.7,162.8L724.2,164.6L719.2,174.5L724.6,177.5L722.3,184.1L706.3,179.0L700.6,189.4L674.9,174.2L679.1,165.8L675.7,171.6L671.4,169.2L685.1,148.0L686.0,131.4L691.6,126.9L693.5,130.2L691.9,123.3L695.8,119.4L698.0,122.7L699.8,110.2L703.3,113.6L691.5,91.3L695.1,87.5L700.5,93.3L704.4,91.3L700.5,99.1L702.7,103.1L712.1,99.9L707.5,97.9L716.3,93.2L712.2,92.4L713.3,87.8L717.0,86.1L718.6,89.7L714.2,77.5L703.4,89.7L708.4,80.3L706.5,71.1L714.8,69.3L713.6,75.9L716.8,70.4L714.8,67.4L705.8,64.6L706.9,61.3L717.9,65.6L719.1,77.3L725.8,68.1L712.1,47.2L692.0,40.7Z", "inset": "M88.6,158.4L88.1,158.7L88.0,159.2L86.8,159.4L87.3,159.8L87.5,161.7L88.5,162.5L88.0,163.6L88.7,165.7L89.1,166.0L89.5,165.3L91.6,164.7L94.0,165.2L94.4,164.3L93.8,164.3L93.8,164.0L94.8,162.9L94.7,162.2L93.5,161.0L92.4,161.2L91.5,160.7L89.4,160.7L89.3,160.2L89.9,159.7L89.8,159.0L88.6,158.4ZM93.8,152.4L93.2,152.4L93.2,153.6L91.6,154.2L91.2,155.5L90.8,155.5L91.1,156.3L91.8,156.6L92.3,158.3L93.0,157.0L94.9,156.1L95.6,154.4L95.2,153.4L94.9,153.7L93.9,153.1L93.8,152.4ZM91.0,141.9L90.4,142.1L90.5,142.8L89.6,143.0L89.7,143.4L89.1,143.3L89.3,142.7L88.5,143.1L88.2,144.1L87.6,144.3L88.0,144.6L87.9,145.3L87.1,145.3L86.8,144.6L85.1,144.7L79.8,151.9L79.3,152.2L78.8,151.4L78.3,151.5L79.3,152.3L79.5,153.1L78.5,154.9L78.9,156.2L78.7,158.0L77.4,160.1L78.1,159.7L78.7,160.5L77.7,161.5L78.4,161.0L78.5,161.3L78.8,160.6L79.1,161.1L78.6,161.2L79.6,161.3L80.3,162.2L80.5,163.3L79.9,166.0L80.4,167.5L80.2,169.6L78.4,172.8L78.5,174.7L80.3,176.4L82.1,177.3L84.1,177.7L86.1,179.0L85.9,178.5L81.7,176.1L81.6,174.9L82.4,174.4L82.8,173.1L83.2,172.9L82.8,172.2L83.0,171.7L84.2,170.6L85.6,170.3L85.6,169.0L85.1,169.1L84.8,168.2L83.1,169.2L82.2,169.1L82.9,167.7L83.8,167.2L83.0,166.3L83.1,165.7L84.0,164.8L84.0,164.0L85.2,163.8L85.5,164.5L86.0,163.7L85.7,163.1L85.2,163.0L85.3,161.7L84.7,161.3L84.6,160.4L83.6,160.4L83.3,159.0L82.2,157.9L82.4,156.1L83.7,155.7L84.2,154.5L84.8,155.5L87.0,153.5L88.2,153.4L88.7,153.7L88.8,154.2L88.1,154.7L89.3,154.2L89.3,153.8L90.3,153.3L89.7,152.1L88.5,152.0L88.3,150.5L87.2,150.8L87.0,150.4L87.6,149.5L87.5,149.0L88.9,148.6L89.6,146.9L90.2,146.5L90.1,144.0L91.0,143.0L90.7,142.5L91.0,141.9ZM87.6,136.2L87.3,136.9L86.3,136.8L85.5,137.6L86.1,138.9L86.5,138.9L86.3,139.2L88.7,138.6L89.1,138.1L89.2,136.6L88.9,137.0L87.6,136.2ZM84.4,136.2L84.0,136.8L82.7,137.5L82.7,138.1L83.8,138.9L85.3,138.4L85.0,136.6L84.4,136.6L84.4,136.2ZM53.5,37.6L51.8,37.6L49.1,40.5L49.5,40.9L49.1,41.4L50.2,42.7L50.1,43.9L50.5,45.0L51.1,44.7L51.4,44.9L51.1,45.3L52.9,46.3L53.1,46.0L52.9,47.9L55.6,53.2L55.9,55.0L56.1,54.6L56.6,55.3L57.4,55.5L57.4,54.9L56.2,54.9L56.2,54.6L57.0,54.6L56.5,54.6L56.6,54.2L57.4,54.4L57.0,54.3L57.5,54.3L57.1,53.9L57.5,53.6L57.2,53.8L57.4,53.4L56.6,52.6L56.9,52.3L56.1,52.0L56.0,50.6L56.5,50.5L56.0,50.4L56.5,50.2L56.0,50.3L56.4,50.0L55.7,49.9L55.7,49.0L57.5,47.7L57.9,48.6L59.8,47.6L58.9,45.8L60.5,45.0L63.6,44.8L64.3,44.3L63.7,44.0L62.3,44.8L61.9,44.1L62.7,43.6L62.4,43.6L60.0,44.9L62.4,43.3L55.4,47.2L54.7,45.1L55.6,44.8L55.2,43.9L55.6,44.0L55.3,43.7L55.6,42.5L54.5,40.5L55.5,40.5L56.2,39.7L55.3,39.7L55.3,39.1L54.6,39.1L53.9,39.6L54.8,38.9L54.8,38.3L55.1,38.4L54.5,38.1L54.4,37.6L53.5,37.6ZM47.4,36.0L47.1,36.0L47.1,36.6L47.4,38.2L46.6,37.2L46.8,36.4L45.9,36.9L46.7,37.5L46.2,37.2L45.3,38.6L45.3,39.7L45.7,40.0L47.1,39.2L48.6,39.9L47.5,37.4L47.4,36.0ZM8.3,35.1L7.7,35.4L7.8,35.9L9.4,36.5L9.5,40.4L7.9,38.9L2.6,37.6L7.7,38.9L9.4,40.7L9.1,40.9L8.0,39.9L7.4,41.0L4.5,39.3L2.6,38.8L2.6,39.1L7.7,41.2L7.1,41.6L7.1,42.1L4.5,43.4L4.4,43.8L4.9,43.3L4.9,43.7L3.7,45.1L3.9,47.1L4.7,48.0L4.4,49.6L5.4,50.4L5.0,52.0L7.9,52.6L9.0,52.0L10.4,52.0L10.5,52.4L10.5,52.0L11.1,52.0L13.2,52.9L13.3,52.5L12.7,51.3L13.3,49.5L12.1,49.2L11.9,44.7L12.7,42.7L12.5,41.9L13.3,41.7L12.4,41.8L12.1,40.7L9.5,40.6L9.8,39.6L9.5,37.0L10.2,36.4L10.7,36.7L10.7,36.1L10.4,36.0L10.8,36.0L8.5,35.4L8.3,35.2L8.6,35.2L8.3,35.1ZM46.2,21.4L45.8,20.9L44.8,21.4L44.5,21.2L44.8,21.0L43.9,22.0L44.4,21.9L44.4,22.5L45.4,23.3L46.3,23.0L46.6,23.3L46.2,24.5L44.9,25.3L43.2,25.5L43.4,26.3L42.0,26.8L41.5,26.6L41.4,25.0L40.6,24.2L40.3,24.3L40.5,24.7L40.7,24.6L40.4,24.9L39.9,25.0L40.2,24.4L39.9,24.1L40.4,23.9L39.5,22.9L39.4,25.0L38.3,25.0L39.1,24.4L38.8,23.6L38.8,24.3L38.1,24.1L38.4,23.6L38.1,23.8L37.9,24.7L37.4,24.4L37.5,24.2L37.1,24.2L37.2,23.4L36.3,23.8L36.5,23.4L35.9,23.4L35.6,23.0L36.2,24.1L34.6,24.8L33.4,26.5L32.9,25.9L32.7,26.3L32.3,26.0L32.3,26.3L30.9,26.3L31.7,25.6L30.8,26.2L26.1,26.4L22.8,27.0L23.2,26.5L20.6,27.8L20.9,28.5L19.7,29.4L19.3,28.8L20.2,27.6L23.0,26.2L23.8,24.9L19.8,26.4L20.3,27.5L19.7,26.4L17.3,27.5L16.9,28.0L16.5,27.9L16.1,30.6L16.6,30.7L18.8,28.7L19.6,29.5L18.9,30.2L18.8,29.7L18.0,30.0L17.5,31.0L16.6,31.2L17.6,31.2L17.9,33.3L18.4,33.2L18.0,33.4L18.5,34.2L19.3,33.8L19.6,34.3L19.7,35.2L19.3,35.3L19.2,35.9L19.4,38.9L19.2,39.2L18.8,38.9L18.6,39.3L19.0,39.6L18.1,40.8L15.5,40.9L18.5,40.9L15.1,41.5L18.7,41.0L18.4,41.2L18.6,41.5L18.4,41.9L17.7,42.0L18.2,42.1L18.1,42.3L17.5,42.4L18.0,42.5L17.9,43.6L18.3,43.6L18.9,46.1L18.0,46.8L18.9,46.5L19.4,47.8L18.0,48.7L18.2,49.7L19.3,48.9L19.5,49.6L20.0,49.3L19.3,50.1L20.2,49.8L20.4,50.3L20.1,49.9L19.4,50.1L19.5,50.5L20.4,50.4L20.0,50.4L20.4,51.0L20.1,51.1L20.4,51.0L20.7,51.6L20.3,51.7L20.7,51.7L21.3,52.7L21.3,53.5L21.5,53.4L21.2,53.5L21.8,54.9L22.5,54.9L22.0,55.3L22.4,55.7L22.9,55.6L22.6,55.9L23.1,56.1L23.1,56.7L23.5,56.3L23.7,56.7L23.3,57.0L23.8,56.8L23.5,57.2L23.9,57.1L23.7,57.7L24.3,57.9L24.8,61.0L24.2,61.4L24.7,61.3L24.4,61.8L24.8,61.6L24.9,62.1L24.5,62.3L24.9,62.2L25.2,62.7L25.0,63.4L24.4,63.3L25.0,63.4L24.5,64.7L24.9,64.7L24.9,65.2L24.5,65.2L24.9,65.3L24.7,66.1L25.0,66.1L25.5,67.3L25.2,68.1L25.2,69.2L25.9,69.8L25.7,71.4L25.4,71.7L25.1,71.6L25.4,71.9L24.2,74.5L23.0,76.0L23.3,76.5L22.9,77.0L23.2,76.9L23.4,78.0L23.0,79.7L22.0,81.1L21.5,81.2L21.9,81.3L21.7,81.6L20.2,83.6L19.8,84.8L19.2,85.0L19.6,85.4L19.3,86.3L19.9,87.0L20.0,87.9L19.9,88.6L19.4,88.7L19.9,88.7L21.2,93.1L21.6,93.1L22.2,94.5L23.7,95.8L26.5,97.3L32.2,103.7L33.3,105.8L31.7,102.5L32.2,102.2L33.2,103.6L34.7,107.7L38.2,112.8L39.0,114.5L40.0,121.1L43.1,128.4L42.4,125.9L43.0,124.3L45.8,121.5L47.7,122.3L47.4,121.5L47.9,121.8L47.7,120.3L47.5,121.4L46.7,121.3L46.1,120.7L46.2,119.9L47.0,119.5L46.3,119.9L46.2,120.6L46.6,121.2L47.5,121.1L47.2,120.4L47.8,120.0L46.9,119.6L47.5,119.6L47.3,118.1L47.7,118.0L48.1,119.0L48.9,119.8L49.2,119.5L48.8,119.5L48.3,118.3L48.4,116.6L49.1,116.6L49.2,116.0L49.9,115.7L50.9,115.7L51.0,115.3L48.2,115.5L49.2,114.9L48.6,114.5L49.1,114.6L49.5,114.1L50.3,114.6L50.6,113.9L51.2,113.9L50.5,113.2L50.8,112.4L50.3,111.7L50.9,110.6L50.4,111.7L51.3,112.5L51.7,112.3L52.0,112.6L52.2,112.3L51.7,111.8L51.1,112.3L50.8,111.8L51.3,110.9L51.8,110.9L52.0,111.7L52.6,111.4L52.1,111.2L52.1,110.8L51.0,110.6L50.5,108.6L50.8,108.3L50.7,106.6L51.3,102.1L51.7,101.8L51.5,101.4L51.8,100.8L53.1,100.8L51.2,101.0L50.7,100.7L51.0,100.7L50.8,100.3L51.3,99.5L52.5,95.4L51.9,94.6L52.0,92.7L52.6,92.4L52.2,92.2L54.2,91.9L52.5,91.8L52.7,91.0L52.5,90.8L52.6,90.2L52.3,90.2L52.2,87.3L53.0,87.3L52.7,87.0L53.6,87.2L52.5,86.7L52.7,86.1L53.1,86.1L52.8,86.0L53.2,85.9L52.9,85.0L53.3,82.4L54.0,82.4L53.5,82.4L53.4,81.9L53.8,80.8L53.7,79.4L54.3,79.5L54.4,79.2L54.5,78.6L54.1,78.2L55.4,78.5L55.6,77.4L54.7,77.1L54.7,75.2L54.7,74.7L55.7,74.7L55.4,73.6L56.0,73.4L56.0,72.9L55.7,72.8L55.0,73.4L54.9,73.1L56.2,71.4L55.6,70.6L55.2,71.0L53.9,70.0L53.4,66.6L53.8,64.6L54.7,64.4L54.2,62.9L55.6,62.9L55.6,59.3L54.1,59.3L53.4,59.0L53.6,58.5L55.6,58.5L55.6,57.7L53.2,57.7L53.2,57.3L54.5,55.6L55.9,56.3L55.0,55.6L55.8,55.2L55.0,55.2L55.6,55.0L55.2,54.2L55.8,55.0L55.5,53.7L55.1,53.9L54.3,52.7L54.7,52.5L54.3,52.6L53.5,51.4L53.1,49.5L52.5,48.7L52.7,47.2L51.8,46.2L50.0,46.6L50.1,45.7L49.4,45.7L49.2,46.2L49.0,45.6L48.6,45.8L48.3,44.4L47.5,43.5L45.1,42.2L45.3,41.7L44.6,40.8L42.6,39.2L42.4,37.7L42.8,37.6L42.1,36.8L42.7,36.6L42.4,35.4L41.5,35.6L42.2,35.1L41.6,35.0L41.9,34.3L42.8,34.5L42.8,33.9L43.0,34.6L43.8,34.5L43.5,34.1L46.2,34.3L47.4,35.1L47.4,35.7L48.6,35.8L50.5,34.7L51.0,35.3L50.5,34.7L51.1,34.4L51.8,34.7L52.1,34.2L52.3,34.9L52.5,34.3L54.0,35.2L52.5,34.2L54.4,32.4L54.2,31.2L55.0,30.4L54.3,30.9L52.8,30.3L52.7,30.6L52.7,29.1L51.9,29.4L51.9,29.0L52.7,28.5L51.9,28.3L51.0,28.7L50.6,29.6L49.3,29.1L51.0,28.9L51.0,28.6L50.4,28.7L50.7,28.3L50.3,27.9L49.8,28.1L49.5,27.7L49.5,26.8L50.1,26.8L50.0,27.1L50.3,26.8L50.1,26.4L50.1,26.8L49.5,26.8L49.2,25.9L50.1,25.1L49.1,25.5L49.6,25.2L49.1,24.4L49.7,24.2L50.1,24.5L50.0,24.0L50.4,23.8L50.2,23.5L48.8,24.1L48.1,23.9L48.2,22.5L47.7,23.1L47.0,23.2L46.2,21.4ZM28.7,21.0L28.5,20.1L26.2,20.8L26.2,23.1L28.8,21.9L29.4,23.5L30.2,23.3L29.5,23.4L28.9,21.9L29.2,21.5L28.7,21.0ZM25.2,20.2L25.6,19.9L25.3,19.4L23.8,20.5L23.1,20.1L22.1,20.7L21.7,21.5L22.0,22.0L22.8,22.1L23.0,22.4L22.7,22.8L19.4,23.3L19.6,23.8L18.8,23.8L17.6,24.5L16.6,26.2L17.3,27.4L19.6,26.3L19.0,23.9L19.5,25.1L22.7,24.3L23.1,23.3L23.4,23.7L24.7,22.8L25.2,21.6L25.0,21.4L24.4,22.0L24.1,21.5L25.2,20.2ZM59.2,4.3L59.2,5.0L60.1,4.8L60.4,5.4L59.1,5.2L58.6,6.0L57.9,5.8L57.3,6.2L57.5,6.3L57.1,7.1L57.7,6.3L58.0,6.8L57.7,7.3L58.5,7.4L58.9,6.5L58.7,7.3L59.4,7.8L59.1,8.1L58.3,7.8L56.9,8.2L57.0,7.1L55.4,6.1L56.2,4.6L54.4,6.6L55.3,7.0L55.5,7.7L54.1,6.9L52.5,9.1L58.1,12.7L57.1,13.6L57.4,13.8L57.2,14.4L55.0,14.2L55.0,13.6L54.8,14.2L54.3,13.4L54.4,12.6L54.0,12.6L54.0,13.2L54.7,14.2L54.1,14.3L54.3,13.7L53.7,13.5L53.5,12.9L53.2,13.4L53.8,13.7L52.8,14.1L53.9,13.9L54.1,14.3L53.1,14.5L53.1,15.5L52.0,15.3L52.2,15.8L51.7,16.2L49.9,15.5L49.7,14.9L49.3,15.4L48.4,15.3L47.5,13.9L47.5,13.3L47.8,13.2L47.1,12.9L46.5,13.3L46.5,13.0L46.3,13.2L45.7,13.0L46.0,12.8L44.8,12.7L44.7,13.5L45.7,14.0L44.7,15.2L46.5,15.8L47.7,17.3L48.1,19.4L46.9,20.0L46.7,19.4L47.5,21.1L48.4,22.0L49.2,20.8L50.1,21.0L50.4,23.2L52.3,24.8L52.1,25.0L53.4,24.5L53.3,25.0L53.6,23.7L54.0,23.9L53.8,24.7L54.1,23.9L53.8,23.0L54.6,21.2L54.2,20.9L54.3,19.8L56.5,20.2L54.6,21.0L54.6,22.2L55.5,23.3L55.0,23.7L55.2,24.2L56.6,24.5L56.5,25.5L56.8,26.1L57.1,25.0L57.9,24.3L56.8,24.9L56.6,24.4L58.2,23.6L58.3,24.8L58.7,24.8L58.8,24.1L59.5,24.4L59.5,24.8L58.7,24.9L59.2,25.2L58.7,25.2L58.7,25.6L59.5,25.6L59.5,26.6L60.0,26.7L58.2,26.8L58.8,27.0L58.2,27.4L58.2,27.8L58.7,27.6L58.8,28.5L59.2,28.6L55.8,28.6L55.3,29.7L57.2,28.8L60.4,28.8L60.6,29.3L60.9,29.3L61.0,30.4L60.4,30.0L59.9,30.0L60.0,30.3L61.3,32.5L61.5,34.0L62.0,34.0L62.4,35.0L62.2,35.9L63.1,37.9L63.5,38.0L63.1,37.3L63.6,37.9L64.9,36.8L64.3,36.6L64.5,36.2L63.9,34.7L64.8,34.2L65.9,36.4L67.1,35.8L68.0,37.2L66.8,34.4L67.8,34.0L66.9,32.2L66.9,30.0L69.8,30.0L72.2,34.6L72.1,35.1L71.6,35.4L73.5,39.2L74.4,38.3L69.5,28.8L71.7,28.6L71.3,27.9L70.4,27.9L70.4,28.5L69.4,28.8L63.3,28.5L63.0,28.4L63.3,27.3L61.6,27.3L61.6,26.8L62.1,26.7L62.1,26.3L61.6,26.3L61.6,25.1L62.1,24.9L61.8,23.7L62.2,23.7L61.8,23.4L62.0,22.1L64.6,22.3L64.7,20.6L63.0,20.5L62.9,22.0L62.0,22.0L62.4,19.0L62.9,19.0L62.4,18.4L63.4,18.2L63.3,18.8L63.8,18.7L63.3,19.0L63.4,19.2L66.0,18.7L66.4,17.9L65.5,16.7L64.4,16.3L64.1,17.5L63.4,18.1L62.4,18.2L62.0,17.2L62.6,16.6L62.9,17.1L64.0,17.1L64.0,16.3L62.7,16.3L63.1,15.5L64.2,15.5L64.6,14.7L63.8,14.2L64.3,14.0L64.3,13.6L63.7,13.5L64.2,13.3L64.0,12.9L61.8,12.5L61.9,11.3L61.3,11.9L61.4,13.0L60.9,13.3L61.8,13.2L61.4,13.6L61.7,13.8L61.3,14.5L61.7,14.8L61.6,15.3L60.3,14.9L59.9,15.7L57.9,14.5L58.3,13.9L58.0,14.3L57.7,14.1L58.7,12.5L58.8,11.2L59.2,10.9L59.4,11.1L59.2,10.6L59.5,10.3L59.7,10.6L59.8,9.6L60.1,9.9L59.2,8.1L59.5,7.9L59.9,8.3L60.2,8.2L60.1,9.1L60.8,8.8L60.4,8.7L61.1,8.3L60.8,8.2L60.9,7.9L61.3,8.0L60.9,7.1L60.1,8.0L60.5,7.3L60.4,6.6L61.0,6.5L60.9,7.0L61.2,6.5L60.4,5.8L61.2,6.2L61.3,7.1L61.8,6.4L60.8,4.8L59.2,4.3Z", "iW": 99.1, "iH": 184.0, "iframe": [6.2, 1.2, 74.3, 64.4], "pts": {"barbar": [253.4, 356.4], "saar_temple": [268.6, 484.0], "diraz": [227.7, 383.8], "aali": [341.7, 553.2], "hamad": [294.4, 675.3], "saar_honey": [272.4, 494.2], "tylos": [297.8, 386.4], "khamis": [426.3, 410.4], "qalat": [351.6, 334.2], "arad": [638.8, 277.5], "bumaher": [602.2, 310.8], "riffa": [465.3, 681.7], "_manama": [511.7, 364.5], "_muharraq": [597.8, 261.0]}};
+
+/* ================================================================ content */
+const TYPES = {
+  temple: { label: 'المعابد', one: 'معبد', color: 'var(--c-temple)', hex: '#2b6c96', icon: 'ic-temple' },
+  burial: { label: 'المدافن', one: 'مدافن', color: 'var(--c-burial)', hex: '#94602a', icon: 'ic-burial' },
+  mosque: { label: 'المساجد', one: 'مسجد', color: 'var(--c-mosque)', hex: '#2f7d47', icon: 'ic-mosque' },
+  fort:   { label: 'القلاع',  one: 'قلعة', color: 'var(--c-fort)',   hex: '#ad3b3b', icon: 'ic-fort' }
+};
+const pano = (lat, lng) => `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat}%2C${lng}`;
+const SITES = [
+  { id: 'barbar', type: 'temple', name: 'معبد باربار', callout: [200, 205, 'a'],
+    info: 'معبد من حضارة دلمون عمره نحو أربعة آلاف سنة، يتكوّن من ثلاثة معابد بُني بعضها فوق بعض، وبجانبه بئر ماء عذب.',
+    cap: [[3, 'معبد باربار من حضارة دلمون، عمره نحو أربعة آلاف سنة.'], [12, 'يتكوّن من ثلاثة معابد بُني بعضها فوق بعض.'], [21, 'وبجانبه بئر ماء عذب ننزل إليها بدرج من الحجارة.']] },
+  { id: 'saar_temple', type: 'temple', name: 'معبد سار', callout: [78, 445, 'b'],
+    info: 'معبد من حضارة دلمون في وسط مستوطنة سار القديمة، وحوله بقايا بيوت وشوارع. ما زالت قواعد أعمدته الحجرية ظاهرة.',
+    cap: [[3, 'معبد سار من حضارة دلمون، في وسط مستوطنة قديمة.'], [12, 'ما زالت قواعد أعمدته الحجرية قائمة حتى اليوم.'], [21, 'وحوله بقايا بيوت وشوارع عمرها أكثر من أربعة آلاف سنة.']] },
+  { id: 'diraz', type: 'temple', name: 'معبد الدراز', callout: [78, 330, 'b'],
+    info: 'معبد من حضارة دلمون في قرية الدراز، بقيت منه قواعد أعمدة دائرية كبيرة مرتّبة في صفّين.',
+    cap: [[3, 'معبد الدراز من حضارة دلمون.'], [10, 'بقيت منه قواعد أعمدة دائرية مرتّبة في صفّين.'], [17, 'وفي وسط الصفّ الثاني قاعدة مربّعة.']] },
+  { id: 'aali', type: 'burial', name: 'تلال عالي', callout: [395, 590, 'b'], unesco: 'من مواقع التراث العالمي (تلال مدافن دلمون)',
+    pano: pano(26.1606, 50.5169),
+    info: 'في عالي أكبر تلال المدافن في البحرين، ومنها التلال الملكية الضخمة التي يزيد عمرها على أربعة آلاف سنة.',
+    cap: [[3, 'في عالي أكبر تلال المدافن في البحرين: التلال الملكية.'], [12, 'عمرها نحو أربعة آلاف سنة، من حضارة دلمون.'], [21, 'وهي من مواقع التراث العالمي.']] },
+  { id: 'hamad', type: 'burial', name: 'تلال مدينة حمد', callout: [110, 690, 'b'], unesco: 'من مواقع التراث العالمي (تلال مدافن دلمون)',
+    info: 'حقل واسع فيه آلاف التلال الصغيرة المتقاربة، وهي مدافن من حضارة دلمون.',
+    cap: [[3, 'حقل واسع من تلال المدافن في مدينة حمد.'], [12, 'فيه آلاف التلال الصغيرة المتقاربة من حضارة دلمون.'], [21, 'وهو من مواقع التراث العالمي.']] },
+  { id: 'saar_honey', type: 'burial', name: 'مدافن سار المتشابكة', callout: [78, 555, 'b'],
+    info: 'مقبرة من حضارة دلمون جنوب مستوطنة سار، تتلاصق قبورها مثل خلايا النحل، فكل قبر جديد بُني ملاصقاً للقبور التي قبله.',
+    cap: [[3, 'مقبرة من حضارة دلمون جنوب مستوطنة سار.'], [11, 'تتلاصق قبورها مثل خلايا النحل.'], [19, 'بُني كل قبر جديد ملاصقاً للقبور التي قبله.']] },
+  { id: 'tylos', type: 'burial', name: 'مدافن تايلوس', callout: [310, 170, 'a'],
+    info: 'مقابر من عصر تايلوس قبل نحو ألفي سنة، فيها قبور مستطيلة مبنية بالحجارة، وحولها تلال منخفضة.',
+    cap: [[3, 'مدافن من عصر تايلوس، قبل نحو ألفي سنة.'], [11, 'فيها قبور مستطيلة مبنية بالحجارة.'], [19, 'وحولها تلال منخفضة لم يُنقَّب فيها بعد.']] },
+  { id: 'khamis', type: 'mosque', name: 'مسجد الخميس', callout: [455, 480, 'b'],
+    pano: pano(26.2082, 50.5483),
+    info: 'يُعدّ أقدم بناء إسلامي في مملكة البحرين، ويُعرف بالمسجد ذي المنارتين. بقيت فيه أقواس حجرية تقوم على أعمدة سميكة.',
+    cap: [[3, 'يُعدّ مسجد الخميس أقدم بناء إسلامي في مملكة البحرين.'], [12, 'بقيت فيه أقواس حجرية تقوم على أعمدة سميكة.'], [21, 'ويُعرف بالمسجد ذي المنارتين.']] },
+  { id: 'qalat', type: 'fort', name: 'قلعة البحرين', callout: [425, 215, 'a'], unesco: 'من مواقع التراث العالمي منذ عام ٢٠٠٥م',
+    pano: pano(26.23361, 50.52056),
+    info: 'تقع فوق تلّ أثري كوّنته مدن قديمة بُنيت فوق بعضها، منها عاصمة حضارة دلمون، وتطلّ على البحر.',
+    cap: [[3, 'تقع القلعة فوق تلّ أثري كوّنته مدن قديمة بُنيت فوق بعضها.'], [12, 'حولها آثار مدينة كانت عاصمة لحضارة دلمون.'], [22, 'أُدرجت في قائمة التراث العالمي عام ٢٠٠٥م.']] },
+  { id: 'arad', type: 'fort', name: 'قلعة عراد', callout: [770, 330, 'b'],
+    pano: pano(26.2525, 50.6272),
+    info: 'قلعة مربّعة الشكل في كل ركن منها برج دائري، ويحيط بها خندق. تقع على ساحل عراد في جزيرة المحرّق.',
+    cap: [[3, 'قلعة مربّعة الشكل، في كل ركن منها برج دائري.'], [12, 'يحيط بها خندق، ونعبر إليها من البوابة.'], [22, 'تقع على ساحل عراد في جزيرة المحرّق.']] },
+  { id: 'bumaher', type: 'fort', name: 'قلعة بو ماهر', callout: [650, 400, 'b'], unesco: 'جزء من موقع التراث العالمي «طريق اللؤلؤ»',
+    pano: pano(26.24139, 50.61361),
+    info: 'تقع في الطرف الجنوبي لجزيرة المحرّق على البحر، وبقي منها برج واحد، ومنها يبدأ طريق اللؤلؤ.',
+    cap: [[3, 'لم يبقَ من قلعة بو ماهر إلا برج واحد.'], [11, 'وتظهر حوله أسس جدرانها القديمة.'], [19, 'منها يبدأ طريق اللؤلؤ المسجّل في التراث العالمي.']] },
+  { id: 'riffa', type: 'fort', name: 'قلعة الشيخ سلمان بن أحمد الفاتح', short: 'قلعة الشيخ سلمان', callout: [540, 700, 'b'],
+    pano: pano(26.11778, 50.56278),
+    info: 'تُعرف بقلعة الرفاع، بناها الشيخ سلمان بن أحمد الفاتح عام ١٨١٢م على حافة وادي الحنينية.',
+    cap: [[3, 'تقف القلعة على حافة وادي الحنينية في الرفاع.'], [12, 'بناها الشيخ سلمان بن أحمد الفاتح عام ١٨١٢م.'], [22, 'في داخلها ساحات وغرف، وبرج للهواء (بارجيل).']] }
+];
+const byId = Object.fromEntries(SITES.map(s => [s.id, s]));
+const watched = new Set();
+
+/* ================================================================ map */
+const svgNS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs = {}, parent) {
+  const e = document.createElementNS(svgNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function buildMap() {
+  const svg = $('#map');
+  svg.setAttribute('viewBox', `0 0 ${MAP.W} ${MAP.H}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  el('rect', { x: -400, y: -400, width: MAP.W + 800, height: MAP.H + 800, fill: '#cde6ec' }, svg);
+  const land = el('path', { d: MAP.main, fill: '#f1e4c6', stroke: '#b8a27a', 'stroke-width': 1.3, 'stroke-linejoin': 'round' }, svg);
+  land.setAttribute('aria-hidden', 'true');
+  // sea label, towns
+  const sl = el('text', { x: 64, y: 790, class: 'sealabel', 'text-anchor': 'middle' }, svg); sl.textContent = 'الخليج العربي';
+  for (const [k, name, dx, dy] of [['_manama', 'المنامة', 8, -8], ['_muharraq', 'المحرّق', 8, -8]]) {
+    const [x, y] = MAP.pts[k];
+    el('circle', { cx: x, cy: y, r: 3.5, fill: '#8c8577' }, svg);
+    const t = el('text', { x: x + dx, y: y + dy, class: 'maplabel', 'text-anchor': 'end' }, svg); t.textContent = name;
+  }
+  // inset: the whole kingdom
+  const ig = el('g', { transform: `translate(${MAP.W - 136} ${MAP.H - 238})` }, svg);
+  el('rect', { x: -10, y: -28, width: MAP.iW + 20, height: MAP.iH + 40, rx: 10, fill: '#fffdf8', stroke: 'rgba(110,86,44,.25)' }, ig);
+  const it = el('text', { x: MAP.iW / 2, y: -10, 'text-anchor': 'middle', class: 'maplabel', style: 'stroke:none;font-size:13px' }, ig); it.textContent = 'مملكة البحرين كاملة';
+  el('rect', { x: 0, y: 0, width: MAP.iW, height: MAP.iH, fill: '#cde6ec' }, ig);
+  el('path', { d: MAP.inset, fill: '#f1e4c6', stroke: '#b8a27a', 'stroke-width': .6 }, ig);
+  const f = MAP.iframe;
+  el('rect', { x: f[0], y: f[1], width: f[2] - f[0], height: f[3] - f[1], fill: 'none', stroke: '#0e6a70', 'stroke-width': 1.6 }, ig);
+  // north arrow + scale bar (5 km)
+  const na = el('g', { transform: `translate(${MAP.W - 40} 40)` }, svg);
+  el('path', { d: 'M0 -22 L9 8 L0 2 L-9 8 Z', fill: '#1f2a2c' }, na);
+  const nt = el('text', { x: 0, y: 26, 'text-anchor': 'middle', class: 'maplabel', style: 'stroke:none;font-weight:700;fill:#1f2a2c' }, na); nt.textContent = 'ش';
+  const km5 = 5 / 111.32 * 3000;
+  const sb = el('g', { transform: `translate(${MAP.W - 170 - km5} ${MAP.H - 28})` }, svg);
+  el('rect', { x: 0, y: 0, width: km5, height: 6, fill: '#1f2a2c' }, sb);
+  el('rect', { x: km5 / 2, y: 0, width: km5 / 2, height: 6, fill: '#fffdf8', stroke: '#1f2a2c', 'stroke-width': 1 }, sb);
+  const st = el('text', { x: km5 / 2, y: -6, 'text-anchor': 'middle', class: 'maplabel', style: 'stroke:none;font-size:13px' }, sb); st.textContent = '٥ كم';
+  // pins
+  const pins = el('g', {}, svg);
+  for (const s of SITES) {
+    const [x, y] = MAP.pts[s.id];
+    const [bx, by, pos] = s.callout;
+    const T = TYPES[s.type];
+    const g = el('g', { class: 'pin', tabindex: 0, role: 'button', 'aria-label': `${s.name}، ${T.one}` }, pins);
+    el('line', { x1: x, y1: y, x2: bx, y2: by, stroke: '#4c4a44', 'stroke-width': 1.4 }, g);
+    el('circle', { cx: x, cy: y, r: 4.5, fill: T.hex, stroke: '#fff', 'stroke-width': 1.5 }, g);
+    const b = el('g', { class: 'badge' }, g);
+    el('circle', { class: 'ring', cx: bx, cy: by, r: 21, fill: T.hex, stroke: '#fff', 'stroke-width': 3.5 }, b);
+    const u = el('use', { href: '#' + T.icon, x: bx - 12, y: by - 12, width: 24, height: 24, color: '#fff' }, b);
+    const t = el('text', { x: bx, y: pos === 'a' ? by - 31 : by + 42, 'text-anchor': 'middle' }, g);
+    t.textContent = s.short || s.name;
+    g.addEventListener('click', () => openSite(s.id));
+    g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSite(s.id); } });
+  }
+}
+function buildList() {
+  const wrap = $('#groups');
+  for (const type of ['temple', 'burial', 'mosque', 'fort']) {
+    const T = TYPES[type], list = SITES.filter(s => s.type === type);
+    const g = document.createElement('section'); g.className = 'group'; g.style.setProperty('--c', T.color);
+    g.innerHTML = `<h3 class="group-h"><span class="chipicon"><svg><use href="#${T.icon}"/></svg></span>${T.label}<span class="n">${ar(list.length)}</span></h3><ul></ul>`;
+    const ul = g.querySelector('ul');
+    for (const s of list) {
+      const li = document.createElement('li');
+      li.innerHTML = `<button class="item" type="button" data-id="${s.id}"><span>${s.name}</span><span class="seen" hidden>شاهدتها ✓</span></button>`;
+      ul.appendChild(li);
+    }
+    wrap.appendChild(g);
+  }
+  wrap.addEventListener('click', e => { const b = e.target.closest('.item'); if (b) openSite(b.dataset.id); });
+}
+
+/* ================================================================ site card */
+let current = null, lastFocus = null;
+function chipHTML(T) { return `<span class="chipicon" style="--c:${T.color}"><svg><use href="#${T.icon}"/></svg></span>${T.one}`; }
+function openSite(id) {
+  const s = byId[id], T = TYPES[s.type]; current = s; lastFocus = document.activeElement;
+  const card = $('#siteCard'); card.style.setProperty('--c', T.color);
+  $('#siteType').innerHTML = chipHTML(T); $('#siteType').style.setProperty('--c', T.color);
+  $('#siteName').textContent = s.name;
+  $('#siteInfo').textContent = s.info;
+  const u = $('#siteUnesco'); u.hidden = !s.unesco; if (s.unesco) u.querySelector('span').textContent = s.unesco;
+  $('#panoBtn').hidden = !s.pano; $('#noPano').hidden = !!s.pano; $('#panoNote').hidden = !s.pano;
+  if (s.pano) $('#panoBtn').href = s.pano;
+  const hasPh = !!(PHOTOS[s.id] && PHOTOS[s.id].length);
+  $('#photosBtn').hidden = !hasPh; $('#noPhotos').hidden = hasPh;
+  $('#playBtn').className = hasPh ? 'btn soft' : 'btn primary';
+  $('#siteModal').hidden = false; (hasPh ? $('#photosBtn') : $('#playBtn')).focus({ preventScroll: true });
+}
+function closeSite() { $('#siteModal').hidden = true; if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true }); }
+$('#closeCard').addEventListener('click', closeSite);
+$('#siteModal').addEventListener('click', e => { if (e.target === $('#siteModal')) closeSite(); });
+$('#playBtn').addEventListener('click', () => { if (current) openPlayer(current); });
+$('#photosBtn').addEventListener('click', () => { if (current) openSlides(current); });
+
+/* ================================================================ 3D engine */
+const glCanvas = $('#gl');
+let renderer = null;
+function getRenderer() {
+  if (renderer) return renderer;
+  renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  initMaterials();
+  return renderer;
+}
+const HORIZON = 0xd8ebf0;
+const V3 = THREE.Vector3;
+function rand(seed) { let s = seed >>> 0; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
+function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function finishTex(c, srgb = true) {
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return t;
+}
+function softBlotches(g, size, n, r, light, dark) {
+  for (let i = 0; i < n; i++) {
+    const x = r() * size, y = r() * size, rad = size * (0.04 + r() * 0.13);
+    const c0 = r() < 0.5 ? `rgba(255,250,236,${light * (0.5 + r())})` : `rgba(90,66,36,${dark * (0.5 + r())})`;
+    for (const ox of [-size, 0, size]) for (const oy of [-size, 0, size]) {
+      const gr = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, rad);
+      gr.addColorStop(0, c0); gr.addColorStop(1, c0.replace(/[\d.]+\)$/, '0)'));
+      g.fillStyle = gr; g.beginPath(); g.arc(x + ox, y + oy, rad, 0, Math.PI * 2); g.fill();
+    }
+  }
+}
+function grain(g, size, amt, r) {
+  const img = g.getImageData(0, 0, size, size), d = img.data;
+  for (let i = 0; i < d.length; i += 4) { const n = (r() - 0.5) * amt; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+  g.putImageData(img, 0, 0);
+}
+function texPlain(base, seed, opts = {}) {
+  const size = 512, c = makeCanvas(size, size), g = c.getContext('2d'), r = rand(seed);
+  g.fillStyle = base; g.fillRect(0, 0, size, size);
+  softBlotches(g, size, opts.blotches ?? 120, r, opts.light ?? 0.06, opts.dark ?? 0.05);
+  if (opts.specks) { for (let i = 0; i < opts.specks; i++) { g.fillStyle = r() < 0.5 ? 'rgba(70,52,30,.35)' : 'rgba(255,250,240,.35)'; const s = 1 + r() * 2.4; g.fillRect(r() * size, r() * size, s, s); } }
+  if (opts.courses) { g.strokeStyle = 'rgba(86,64,32,0.10)'; g.lineWidth = 1.4; for (let y = opts.courses / 2; y < size; y += opts.courses) { g.beginPath(); g.moveTo(0, y); for (let x = 16; x < size; x += 16) g.lineTo(x, y + (r() - 0.5) * 2.4); g.lineTo(size, y); g.stroke(); } }
+  grain(g, size, opts.grain ?? 16, r);
+  return finishTex(c);
+}
+function texRubble(base, mortar, seed) {
+  const size = 512, c = makeCanvas(size, size), g = c.getContext('2d'), r = rand(seed);
+  g.fillStyle = mortar; g.fillRect(0, 0, size, size);
+  const rowH = 32;
+  const col = (v) => { const b = parseInt(base.slice(1), 16); const k = v; const R = Math.min(255, ((b >> 16) & 255) * k), G = Math.min(255, ((b >> 8) & 255) * k), B = Math.min(255, (b & 255) * k); return `rgb(${R | 0},${G | 0},${B | 0})`; };
+  for (let y = 0; y < size; y += rowH) {
+    let x = -r() * 40;
+    while (x < size) {
+      const w = 34 + r() * 46, h = rowH - 4 - r() * 4;
+      g.fillStyle = col(0.86 + r() * 0.24);
+      const y0 = y + 2 + r() * 2;
+      for (const ox of (x + w > size ? [0, -size] : x < 0 ? [0, size] : [0])) {
+        g.beginPath();
+        const x0 = x + ox;
+        const rr = 6;
+        g.moveTo(x0 + rr, y0); g.lineTo(x0 + w - 3 - rr, y0); g.quadraticCurveTo(x0 + w - 3, y0, x0 + w - 3, y0 + rr);
+        g.lineTo(x0 + w - 3, y0 + h - rr); g.quadraticCurveTo(x0 + w - 3, y0 + h, x0 + w - 3 - rr, y0 + h);
+        g.lineTo(x0 + rr, y0 + h); g.quadraticCurveTo(x0, y0 + h, x0, y0 + h - rr); g.lineTo(x0, y0 + rr); g.quadraticCurveTo(x0, y0, x0 + rr, y0);
+        g.fill();
+      }
+      x += w;
+    }
+  }
+  softBlotches(g, size, 50, r, 0.05, 0.06);
+  grain(g, size, 20, r);
+  return finishTex(c);
+}
+function texPavers() {
+  const size = 256, c = makeCanvas(size, size), g = c.getContext('2d'), r = rand(9);
+  g.fillStyle = '#8f8b84'; g.fillRect(0, 0, size, size);
+  for (let y = 0; y < size; y += 32) for (let x = 0; x < size; x += 32) { const v = 150 + r() * 30; g.fillStyle = `rgb(${v},${v - 4},${v - 10})`; g.fillRect(x + 1.5, y + 1.5, 29, 29); }
+  grain(g, size, 14, r); return finishTex(c);
+}
+function texWater() {
+  const size = 256, c = makeCanvas(size, size), g = c.getContext('2d'), img = g.createImageData(size, size), r = rand(7), waves = [];
+  for (let i = 0; i < 14; i++) waves.push({ kx: Math.round((r() - 0.5) * 18), ky: Math.round((r() - 0.5) * 18), a: 0.3 + r() * 0.7, p: r() * 6.283 });
+  const H = (x, y) => { let h = 0; for (const w of waves) h += w.a * Math.sin((w.kx * x + w.ky * y) * 2 * Math.PI / size + w.p); return h; };
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    let nx = -(H(x + 1, y) - H(x - 1, y)) * 0.8, ny = -(H(x, y + 1) - H(x, y - 1)) * 0.8, nz = 1; const l = Math.hypot(nx, ny, nz);
+    const i = (y * size + x) * 4; img.data[i] = (nx / l * 0.5 + 0.5) * 255; img.data[i + 1] = (ny / l * 0.5 + 0.5) * 255; img.data[i + 2] = (nz / l * 0.5 + 0.5) * 255; img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0); return finishTex(c, false);
+}
+function texFlag() {
+  const c = makeCanvas(500, 300), g = c.getContext('2d'), w = 500, h = 300;
+  g.fillStyle = '#ce1126'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.fillRect(0, 0, w * 0.22, h);
+  for (let i = 0; i < 5; i++) { g.beginPath(); g.moveTo(w * 0.22 - 1, i * h / 5); g.lineTo(w * 0.36, (i + 0.5) * h / 5); g.lineTo(w * 0.22 - 1, (i + 1) * h / 5); g.closePath(); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+let M = null, waterTex = null;
+function initMaterials() {
+  const T = {
+    plaster: texPlain('#dcc59d', 3, { courses: 44 }),
+    plasterR: texPlain('#e3cfaa', 4, { blotches: 90, light: .05, dark: .035, grain: 10 }),
+    rubble: texRubble('#b9a07c', '#8d7a5e', 5),
+    rubbleLight: texRubble('#d6c6a6', '#a89676', 6),
+    sand: texPlain('#e7d1a2', 11, { blotches: 170, grain: 24 }),
+    earth: texPlain('#bfa27a', 12, { blotches: 150, grain: 26, specks: 900, dark: .07 }),
+    earthPale: texPlain('#d8c19a', 13, { blotches: 150, grain: 22, specks: 700 }),
+    light: texPlain('#efe6d2', 14, { blotches: 60, grain: 14 }),
+    pavers: texPavers()
+  };
+  waterTex = texWater(); waterTex.repeat.set(160, 160);
+  const std = (o) => new THREE.MeshStandardMaterial(Object.assign({ roughness: 0.95 }, o));
+  M = {
+    plaster: std({ map: T.plaster }),
+    trim: std({ map: T.plaster, color: 0xf5ecdc }),
+    plasterR: std({ map: T.plasterR }),
+    trimR: std({ map: T.plasterR, color: 0xfaf2e2 }),
+    rubble: std({ map: T.rubble }),
+    rubbleLight: std({ map: T.rubbleLight }),
+    rubbleDark: std({ map: T.rubble, color: 0xc4b8a4 }),
+    sand: std({ map: T.sand, roughness: 1 }),
+    wetsand: std({ map: T.sand, color: 0xcbb68f, roughness: 0.85 }),
+    earth: std({ map: T.earth, roughness: 1 }),
+    cliff: std({ map: T.earth, roughness: 1, side: THREE.DoubleSide }),
+    earthPale: std({ map: T.earthPale, roughness: 1 }),
+    light: std({ map: T.light }),
+    pavers: std({ map: T.pavers }),
+    wood: std({ color: 0x6e4b2c, roughness: 0.85 }),
+    door: std({ color: 0x5a3b22, roughness: 0.8 }),
+    dark: std({ color: 0x2e3436, roughness: 0.7 }),
+    hole: std({ color: 0x4a3f33, roughness: 1 }),
+    metal: std({ color: 0x3d4447, roughness: 0.5, metalness: 0.3 }),
+    white: std({ color: 0xf3f0ea }),
+    trunk: std({ color: 0x8b6b46, roughness: 1, flatShading: true }),
+    leaf: std({ color: 0x5e8e3b, roughness: 0.9, side: THREE.DoubleSide, flatShading: true }),
+    grass: std({ color: 0xa7ad72, roughness: 1, transparent: true, opacity: 0.55, depthWrite: false }),
+    flag: std({ map: texFlag(), side: THREE.DoubleSide, roughness: 0.85 }),
+    water: new THREE.MeshPhongMaterial({ color: 0x38aab6, specular: 0xcfeff2, shininess: 90, normalMap: waterTex, normalScale: new THREE.Vector2(0.5, 0.5) })
+  };
+  M.grass.userData.noShadow = true;
+}
+
+/* ---------------- geometry helpers (merged per material) */
+const TILE = 3;
+function uvScale(g, sx, sy) { const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * sx, uv.getY(k) * (sy ?? sx)); return g; }
+function boxGeo(w, h, d, tile = TILE) {
+  const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv, dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
+  for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++) { const k = f * 4 + i; uv.setXY(k, uv.getX(k) * dims[f][0] / tile, uv.getY(k) * dims[f][1] / tile); }
+  return g;
+}
+function cylGeo(rt, rb, h, seg = 18, tile = TILE) {
+  const g = new THREE.CylinderGeometry(rt, rb, h, seg, 1, false), c = 2 * Math.PI * Math.max(rt, rb);
+  return uvScale(g, c / tile, h / tile);
+}
+let PARTS = new Map();
+function put(mat, geo) {
+  const g = geo.index ? geo.toNonIndexed() : geo;
+  if (!g.attributes.uv) return;
+  if (!PARTS.has(mat)) PARTS.set(mat, []);
+  PARTS.get(mat).push(g);
+}
+function flush(parent) {
+  for (const [mat, list] of PARTS) {
+    const mesh = new THREE.Mesh(mergeGeometries(list, false), mat);
+    mesh.castShadow = !mat.userData.noShadow; mesh.receiveShadow = !mat.userData.noShadow;
+    parent.add(mesh);
+  }
+  PARTS = new Map();
+}
+/* box with bottom at y, rotated ry around its own centre */
+function B(mat, w, h, d, x, y, z, ry = 0, tile) { const g = boxGeo(w, h, d, tile); if (ry) g.rotateY(ry); g.translate(x, y + h / 2, z); put(mat, g); return g; }
+function C(mat, rt, rb, h, x, y, z, seg = 20) { const g = cylGeo(rt, rb, h, seg); g.translate(x, y + h / 2, z); put(mat, g); return g; }
+/* straight wall from (x1,z1) to (x2,z2) */
+function wall(mat, x1, z1, x2, z2, h, t, y = 0) {
+  const L = Math.hypot(x2 - x1, z2 - z1), a = Math.atan2(z2 - z1, x2 - x1);
+  return B(mat, L, h, t, (x1 + x2) / 2, y, (z1 + z2) / 2, -a);
+}
+const ROUNDED = (() => { const s = new THREE.Shape(); s.moveTo(-0.34, 0); s.lineTo(0.34, 0); s.lineTo(0.34, 0.28); s.absarc(0, 0.28, 0.34, 0, Math.PI, false); s.lineTo(-0.34, 0); return s; })();
+function merlon(kind, mat, x, y, z, ry, t) {
+  if (kind === 'round') {
+    const g = uvScale(new THREE.ExtrudeGeometry(ROUNDED, { depth: t, bevelEnabled: false, curveSegments: 6 }), 1 / TILE);
+    g.translate(0, 0, -t / 2); g.rotateY(ry); g.translate(x, y, z); put(mat, g);
+  } else B(mat, 0.62, 0.55, t, x, y, z, ry);
+}
+function merlonLine(kind, mat, x1, z1, x2, z2, y, t, step = 1.2, inset = 0.6) {
+  const L = Math.hypot(x2 - x1, z2 - z1), a = Math.atan2(z2 - z1, x2 - x1), n = Math.max(1, Math.floor((L - inset * 2) / step));
+  for (let i = 0; i <= n; i++) { const f = (inset + i * (L - inset * 2) / n) / L; merlon(kind, mat, x1 + (x2 - x1) * f, y, z1 + (z2 - z1) * f, -a, t); }
+}
+function merlonRing(kind, mat, cx, cz, r, y, t, n) {
+  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; merlon(kind, mat, cx + r * Math.cos(a), y, cz + r * Math.sin(a), -a - Math.PI / 2, t); }
+}
+function ringWall(mat, cx, cz, rx, rz, h, t, n = 28, y = 0, gapFrom = null, gapTo = null) {
+  for (let i = 0; i < n; i++) {
+    const a0 = i / n * Math.PI * 2, a1 = (i + 1) / n * Math.PI * 2, am = (a0 + a1) / 2;
+    if (gapFrom !== null && am > gapFrom && am < gapTo) continue;
+    wall(mat, cx + rx * Math.cos(a0), cz + rz * Math.sin(a0), cx + rx * Math.cos(a1), cz + rz * Math.sin(a1), h, t, y);
+  }
+}
+/* sloped-faced (battered) wall, cross-section trapezoid */
+function batteredWall(mat, x1, z1, x2, z2, h, tb, tt, y = 0) {
+  const L = Math.hypot(x2 - x1, z2 - z1), a = Math.atan2(z2 - z1, x2 - x1);
+  const s = new THREE.Shape(); s.moveTo(-tb / 2, 0); s.lineTo(tb / 2, 0); s.lineTo(tt / 2, h); s.lineTo(-tt / 2, h); s.closePath();
+  const g = uvScale(new THREE.ExtrudeGeometry(s, { depth: L, bevelEnabled: false }), 1 / TILE);
+  g.rotateY(Math.PI / 2 - a); g.translate(x1, y, z1); put(mat, g);
+}
+function arch(mat, x, z, span, pier, spring, top, depth, ry = 0) {
+  const hw = span / 2, s = new THREE.Shape();
+  s.moveTo(-hw - pier / 2, spring); s.lineTo(-hw, spring); s.absarc(0, spring, hw, Math.PI, 0, true);
+  s.lineTo(hw + pier / 2, spring); s.lineTo(hw + pier / 2, top); s.lineTo(-hw - pier / 2, top); s.closePath();
+  const g = uvScale(new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false, curveSegments: 14 }), 1 / TILE);
+  g.translate(0, 0, -depth / 2); g.rotateY(ry); g.translate(x, 0, z); put(mat, g);
+}
+const UP = new V3(0, 1, 0);
+function palm(x, z, h, lean, dir, seed, y = 0) {
+  const r = rand(seed), dx = Math.cos(dir), dz = Math.sin(dir), N = 7;
+  let prev = new V3(x, y, z);
+  for (let i = 1; i <= N; i++) {
+    const t = i / N, off = lean * t * t, p = new V3(x + dx * off, y + h * t, z + dz * off), seg = p.clone().sub(prev), len = seg.length();
+    const g = new THREE.CylinderGeometry(0.33 - 0.12 * t, 0.33 - 0.12 * (i - 1) / N + (i === 1 ? 0.08 : 0), len * 1.04, 7);
+    g.translate(0, len / 2, 0); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(UP, seg.normalize())); g.translate(prev.x, prev.y, prev.z);
+    put(M.trunk, g); prev = p;
+  }
+  const top = prev, bulb = new THREE.IcosahedronGeometry(0.42, 0); bulb.translate(top.x, top.y, top.z); put(M.trunk, bulb);
+  for (let k = 0; k < 9; k++) {
+    const a = k / 9 * Math.PI * 2 + r() * 0.45, L = 3.3 + r() * 0.9, th0 = 0.55 + r() * 0.3, kk = -(0.5 + r() * 0.22);
+    const g = new THREE.PlaneGeometry(1.0, L, 2, 8), pos = g.attributes.position, ox = Math.cos(a), oz = Math.sin(a), px = -oz, pz = ox;
+    for (let v = 0; v < pos.count; v++) {
+      const lx = pos.getX(v), sA = pos.getY(v) + L / 2, t = sA / L, wd = lx * Math.sin(Math.min(1, t * 1.25) * Math.PI * 0.94), th = th0 + kk * sA;
+      const cx = (Math.sin(th) - Math.sin(th0)) / kk + 0.15, cy = -(Math.cos(th) - Math.cos(th0)) / kk - Math.abs(wd) * 0.45;
+      pos.setXYZ(v, top.x + ox * cx + px * wd, top.y + cy, top.z + oz * cx + pz * wd);
+    }
+    g.computeVertexNormals(); put(M.leaf, g);
+  }
+}
+function grassPatches(r, n, area, cx = 0, cz = 0, minR = 0) {
+  for (let i = 0; i < n; i++) {
+    const a = r() * Math.PI * 2, d = minR + Math.sqrt(r()) * (area - minR), s = 0.8 + r() * 2.2;
+    const g = new THREE.CircleGeometry(s, 16); g.scale(1, 1, 0.6 + r() * 0.6); g.rotateX(-Math.PI / 2); g.rotateY(r() * 3);
+    g.translate(cx + Math.cos(a) * d, 0.03 + r() * 0.01, cz + Math.sin(a) * d); put(M.grass, g);
+  }
+}
+function fenceRing(cx, cz, rad, n) {
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2, x = cx + rad * Math.cos(a), z = cz + rad * Math.sin(a);
+    B(M.wood, 0.14, 1.2, 0.14, x, 0, z);
+    const a2 = (i + 1) / n * Math.PI * 2, x2 = cx + rad * Math.cos(a2), z2 = cz + rad * Math.sin(a2);
+    wall(M.metal, x, z, x2, z2, 0.03, 0.03, 1.05); wall(M.metal, x, z, x2, z2, 0.03, 0.03, 0.6);
+  }
+}
+/* unit mound profile (radius 1, height 1), revolved */
+function moundGeo(flat = 0) {
+  const pts = [];
+  for (let i = 0; i <= 12; i++) { const r = 1 - i / 12; let y = Math.pow(Math.cos(r * Math.PI / 2), 1.5); if (flat) y = Math.min(y, 1 - flat) / (1 - flat); pts.push(new THREE.Vector2(Math.max(r, 0.0001), y)); }
+  const g = new THREE.LatheGeometry(pts, 22);
+  return uvScale(g, 4, 1.5);
+}
+function instanced(scene, geo, mat, items) {
+  const im = new THREE.InstancedMesh(geo, mat, items.length), m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+  items.forEach((it, i) => { e.set(0, it.ry || 0, 0); q.setFromEuler(e); m.compose(new V3(it.x, it.y || 0, it.z), q, new V3(it.sx, it.sy, it.sz ?? it.sx)); im.setMatrixAt(i, m); });
+  im.castShadow = true; im.receiveShadow = true; scene.add(im); return im;
+}
+
+/* ---------------- scene scaffolding */
+const SKY_MAT = () => new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: { top: { value: new THREE.Color(0x1f74d0) }, horizon: { value: new THREE.Color(HORIZON) }, sunDir: { value: new V3(-0.5, 0.7, 0.5).normalize() } },
+  vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+  fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 sunDir; varying vec3 vDir;
+    void main(){ vec3 d = normalize(vDir); float h = clamp(d.y,0.0,1.0); vec3 col = mix(horizon, top, pow(h,0.6));
+      float s = max(dot(d, normalize(sunDir)),0.0); col += vec3(1.0,0.93,0.78)*pow(s,400.0)*1.4 + vec3(1.0,0.88,0.66)*pow(s,10.0)*0.16;
+      gl_FragColor = vec4(col,1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`
+});
+function shapeXZ(pts, holes = []) {
+  const s = new THREE.Shape(); pts.forEach(([x, z], i) => i ? s.lineTo(x, -z) : s.moveTo(x, -z)); s.closePath();
+  for (const h of holes) { const p = new THREE.Path(); h.forEach(([x, z], i) => i ? p.lineTo(x, -z) : p.moveTo(x, -z)); p.closePath(); s.holes.push(p); }
+  return s;
+}
+function groundFromShape(shape, mat, y = 0, uv = 1 / 6) {
+  const g = uvScale(new THREE.ShapeGeometry(shape), uv); g.rotateX(-Math.PI / 2); g.translate(0, y, 0); put(mat, g);
+}
+function rectXZ(x0, z0, x1, z1) { return [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]; }
+function baseScene(o = {}) {
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(HORIZON, o.fogNear ?? 140, o.fogFar ?? 620);
+  scene.add(new THREE.HemisphereLight(0xd4ecff, 0xe6cf9f, 1.05));
+  const sun = new THREE.DirectionalLight(0xfff0d8, 2.6);
+  sun.position.set(-60, 90, 70); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  const R = o.shadow ?? 70;
+  Object.assign(sun.shadow.camera, { left: -R, right: R, top: R, bottom: -R, near: 10, far: 320 });
+  sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.05;
+  if (o.sunTarget) { sun.target.position.set(...o.sunTarget); sun.position.add(sun.target.position); scene.add(sun.target); }
+  scene.add(sun);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(1100, 32, 16), SKY_MAT()); sky.renderOrder = -1; scene.add(sky); scene.userData.sky = sky;
+  if (o.water) {
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), M.water); w.rotation.x = -Math.PI / 2; w.position.y = -0.45; w.receiveShadow = true; scene.add(w);
+  }
+  if (o.land !== false) {
+    const pts = o.land || [[-1500, -1500], [1500, -1500], [1500, 1500], [-1500, 1500]];
+    groundFromShape(shapeXZ(pts, o.holes || []), o.groundMat || M.sand, 0);
+    if (o.water && o.land) {
+      // a band of wet sand just below the shoreline
+      groundFromShape(shapeXZ(o.beach || pts, o.holes || []), M.wetsand, -0.25);
+    }
+  }
+  return scene;
+}
+
+/* ================================================================ the twelve sites */
+const BUILD = {};
+
+BUILD.arad = () => {
+  const s = baseScene({ water: true, land: [[-1500, -52], [1500, -52], [1500, 1500], [-1500, 1500]], beach: [[-1500, -60], [1500, -60], [1500, 1500], [-1500, 1500]], holes: [rectXZ(-26, -26, 26, 26)] });
+  const W = 16, T = 2, WH = 6.5;
+  // fort walls
+  for (const [ry, gate] of [[0, false], [Math.PI / 2, false], [Math.PI, true], [-Math.PI / 2, false]]) {
+    const parts = gate ? [[-W, -1.7], [1.7, W]] : [[-W, W]];
+    const g = new THREE.Group();
+    for (const [a, b] of parts) { const geo = boxGeo(b - a, WH, T); geo.translate((a + b) / 2, WH / 2, -(W - T / 2)); geo.rotateY(ry); put(M.plaster, geo); }
+    if (gate) { const geo = boxGeo(3.4, WH - 3.8, T); geo.translate(0, 3.8 + (WH - 3.8) / 2, -(W - T / 2)); geo.rotateY(ry); put(M.plaster, geo); }
+    const par = boxGeo(23, 0.9, 0.5); par.translate(0, WH + 0.45, -(W - 0.25)); par.rotateY(ry); put(M.plaster, par);
+    for (let x = -11; x <= 11.01; x += 1.25) { const m = boxGeo(0.62, 0.55, 0.5); m.translate(x, WH + 0.9 + 0.275, -(W - 0.25)); m.rotateY(ry); put(M.trim, m); }
+    const pl = boxGeo(2 * W, 0.4, 0.2); pl.translate(0, 0.2, -(W + 0.1)); pl.rotateY(ry); if (!gate) put(M.trim, pl);
+  }
+  for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    const cx = sx * W, cz = sz * W;
+    C(M.plaster, 4.1, 4.5, 8.2, cx, 0, cz, 26);
+    C(M.trim, 4.2, 4.2, 0.25, cx, 7.0, cz, 26);
+    merlonRing('rect', M.trim, cx, cz, 3.85, 8.2, 0.5, 18);
+    C(M.trim, 4.75, 4.8, 0.45, cx, 0, cz, 26);
+  }
+  // gate frame (south face, +z) and door
+  { const sh = new THREE.Shape(); sh.moveTo(-2.6, 0); sh.lineTo(-1.5, 0); sh.lineTo(-1.5, 2.4); sh.absarc(0, 2.4, 1.5, Math.PI, 0, true); sh.lineTo(1.5, 0); sh.lineTo(2.6, 0); sh.lineTo(2.6, 7.4); sh.lineTo(-2.6, 7.4); sh.closePath();
+    const g = uvScale(new THREE.ExtrudeGeometry(sh, { depth: 0.5, bevelEnabled: false }), 1 / TILE); g.translate(0, 0, W); put(M.trim, g);
+    for (const x of [-1.9, -0.6, 0.6, 1.9]) B(M.trim, 0.6, 0.55, 0.5, x, 7.4, W + 0.25);
+    B(M.door, 1.45, 3.4, 0.12, -0.75, 0, W - T + 0.4, 1.2); B(M.door, 1.45, 3.4, 0.12, 0.75, 0, W - T + 0.4, -1.2); }
+  // courtyard: low foundation lines seen inside today
+  for (const [x1, z1, x2, z2] of [[-9, -6, -2, -6], [-2, -6, -2, 2], [4, 3, 10, 3], [10, 3, 10, 9], [-11, 6, -6, 6]]) wall(M.rubbleLight, x1, z1, x2, z2, 0.35, 0.5);
+  // dry moat lined with stone, crossed by a two-arched bridge
+  groundFromShape(shapeXZ(rectXZ(-26, -26, 26, 26), [rectXZ(-21.5, -21.5, 21.5, 21.5)]), M.sand, -2.0);
+  groundFromShape(shapeXZ(rectXZ(-21.6, -21.6, 21.6, 21.6)), M.sand, 0);
+  for (const a of [21.5, 26]) { const L = a * 2; for (const ry of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) { const g = boxGeo(L + 0.6, 2.1, 0.6); g.translate(0, -1.0, -(a + (a > 22 ? 0.3 : -0.3))); g.rotateY(ry); put(M.rubbleLight, g); } }
+  { const sh = new THREE.Shape(); sh.moveTo(0, -2.0); sh.lineTo(0.6, -2.0); sh.absarc(1.75, -1.2, 1.15, Math.PI, 0, true); sh.lineTo(2.9, -2.0); sh.lineTo(3.4, -2.0); sh.absarc(4.55, -1.2, 1.15, Math.PI, 0, true); sh.lineTo(5.7, -2.0); sh.lineTo(6.0, -2.0); sh.lineTo(6.0, 0.25); sh.lineTo(0, 0.25); sh.closePath();
+    const g = uvScale(new THREE.ExtrudeGeometry(sh, { depth: 3.2, bevelEnabled: false }), 1 / TILE); g.rotateY(-Math.PI / 2); g.translate(1.6, 0, 20.6);
+    // after rotation the profile runs along +z from z=20.6
+    put(M.rubbleLight, g);
+    B(M.trim, 0.25, 0.7, 6.0, -1.7, 0.25, 23.6); B(M.trim, 0.25, 0.7, 6.0, 1.7, 0.25, 23.6); }
+  // paved plaza on the land side, flag on the south-west tower
+  B(M.pavers, 60, 0.04, 22, 0, 0, 38, 0, 4);
+  C(M.metal, 0.06, 0.09, 7, -W - 2, 8.2, W + 2, 8);
+  s.userData.flag = { pos: [-W - 1.93, 14.0, W + 2], len: 2.6 };
+  flush(s);
+  addFlag(s);
+  return { scene: s, dur: 32, keys: [
+    [70, 34, 85, 0, 4, 0], [30, 14, 58, 0, 4, 0], [0, 3.4, 40, 0, 3.4, 16], [0, 2.4, 22, 0, 2.6, 8], [0, 1.9, 8, 0, 2.4, -10],
+    [-7, 2.0, -3, -15, 6, -15], [0, 10, -8, 0, 5, -60], [10, 28, -70, 0, 4, 0], [-70, 42, -40, 0, 3, 0]] };
+};
+
+BUILD.qalat = () => {
+  const s = baseScene({ water: true, shadow: 95, land: [[-1500, -112], [1500, -112], [1500, 1500], [-1500, 1500]], beach: [[-1500, -122], [1500, -122], [1500, 1500], [-1500, 1500]] });
+  const H = 7, r = rand(21);
+  // the tell: a broad flat-topped mound with a moat cut around the fort
+  { const g = new THREE.CylinderGeometry(1, 1.25, H, 4, 1, true); g.rotateY(Math.PI / 4); g.scale(110, 1, 80); g.translate(0, H / 2, 0); uvScale(g, 30, 2); put(M.earth, g); }
+  const TX = 77.8, TZ = 56.6; // half sizes of the top
+  groundFromShape(shapeXZ(rectXZ(-TX, -TZ, TX, TZ), [rectXZ(-33, -23, 33, 43)]), M.earthPale, H);
+  groundFromShape(shapeXZ(rectXZ(-33, -23, 33, 43), [rectXZ(-26, -16, 26, 36)]), M.earthPale, H - 2.2);
+  groundFromShape(shapeXZ(rectXZ(-26, -16, 26, 36)), M.earthPale, H);
+  for (const [x1, z1, x2, z2] of [[-33, -23, 33, -23], [-33, 43, 33, 43], [-33, -23, -33, 43], [33, -23, 33, 43], [-26, -16, 26, -16], [-26, 36, 26, 36], [-26, -16, -26, 36], [26, -16, 26, 36]]) wall(M.rubble, x1, z1, x2, z2, 2.25, 0.4, H - 2.2);
+  // fort: massive sloping stone walls, a great round bastion, square towers
+  const FH = 10, y0 = H;
+  batteredWall(M.rubble, -24, -14, 24, -14, FH, 4, 2.4, y0);
+  batteredWall(M.rubble, 24, -14, 24, 34, FH, 4, 2.4, y0);
+  batteredWall(M.rubble, 24, 34, 4, 34, FH, 4, 2.4, y0);
+  batteredWall(M.rubble, -4, 34, -24, 34, FH, 4, 2.4, y0);
+  batteredWall(M.rubble, -24, 34, -24, -14, FH, 4, 2.4, y0);
+  B(M.rubble, 8, FH - 4.2, 3.4, 0, y0 + 4.2, 34);           // over the gate
+  C(M.rubble, 7.0, 8.2, FH + 1.2, 24, y0, -14, 30);          // great round bastion
+  C(M.rubble, 1.25, 1.35, 3.0, 24, y0 + FH + 1.2, -14, 14);  // small lookout turret on top
+  B(M.rubble, 10, FH + 1.6, 10, -24, y0, -14);
+  B(M.rubble, 9, FH + 1.0, 9, -24, y0, 34);
+  C(M.rubble, 5.0, 5.8, FH + 0.6, 24, y0, 34, 24);
+  merlonLine('rect', M.rubble, -28.8, -18.8, -19.2, -18.8, y0 + FH + 1.6, 0.6, 1.3, 0.4);
+  // inner ruins
+  for (let i = 0; i < 8; i++) { const x = -16 + r() * 30, z = -6 + r() * 30, w = 4 + r() * 6, d = 3 + r() * 5, h = 0.6 + r() * 1.2; wall(M.rubble, x, z, x + w, z, h, 0.6, y0); wall(M.rubble, x, z, x, z + d, h, 0.6, y0); }
+  // excavated Dilmun city to the west and north-west of the fort
+  const rooms = (x0, z0, x1, z1, n) => { for (let i = 0; i < n; i++) { const x = x0 + r() * (x1 - x0), z = z0 + r() * (z1 - z0), w = 3 + r() * 6, d = 3 + r() * 5, h = 0.5 + r() * 1.1; wall(M.rubbleLight, x, z, x + w, z, h, 0.6, H); wall(M.rubbleLight, x + w, z, x + w, z + d, h, 0.6, H); if (r() < 0.6) wall(M.rubbleLight, x, z + d, x + w, z + d, h * 0.8, 0.6, H); if (r() < 0.6) wall(M.rubbleLight, x, z, x, z + d, h, 0.6, H); } };
+  rooms(-72, -48, -44, 30, 26); rooms(-30, -52, 24, -34, 14); rooms(40, -48, 64, 20, 14);
+  for (let x = -72; x <= -40; x += 3) B(M.wood, 0.12, 1.1, 0.12, x, H, 34);
+  // palm groves on the land side
+  for (let i = 0; i < 46; i++) { const x = -140 + r() * 280; if (Math.abs(x) < 9) continue; palm(x, 92 + r() * 70, 7 + r() * 4, 0.5 + r() * 1.6, r() * 6.28, 300 + i); }
+  flush(s);
+  return { scene: s, dur: 34, keys: [
+    [0, 2.5, 122, 0, 10, 0], [24, 6, 86, 0, 11, 10], [-50, 22, 40, -55, 7, -5], [-40, 14, -40, -10, 9, 0], [30, 20, -45, 24, 12, -14],
+    [10, 26, 0, 0, 7, 12], [0, 14, -48, 0, 0, -200], [-90, 55, -60, 0, 6, 10], [-110, 70, 90, 0, 6, 0]] };
+};
+
+BUILD.bumaher = () => {
+  const land = [[-34, 60], [-30, 22], [-36, -10], [-26, -40], [10, -46], [60, -40], [1500, -40], [1500, 1500], [-34, 1500]];
+  const beach = land.map(([x, z]) => [x - (x < 0 ? 7 : 0), z - (z < -30 ? 7 : 0)]);
+  const s = baseScene({ water: true, land, beach });
+  const r = rand(31);
+  // the one surviving round tower
+  C(M.plaster, 3.9, 4.3, 8.2, 0, 0, 0, 28);
+  C(M.trim, 4.05, 4.05, 0.3, 0, 6.6, 0, 28);
+  merlonRing('rect', M.trim, 0, 0, 3.7, 8.2, 0.45, 18);
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.3; B(M.dark, 0.25, 0.9, 0.2, 4.22 * Math.cos(a), 4.3, 4.22 * Math.sin(a), -a + Math.PI / 2); }
+  C(M.trim, 4.5, 4.6, 0.4, 0, 0, 0, 28);
+  // small building against the tower
+  B(M.plaster, 10, 3.8, 6.5, 8.2, 0, 1.2);
+  merlonLine('rect', M.trim, 3.6, -2.0, 13.1, -2.0, 3.8, 0.4, 1.2, 0.4);
+  merlonLine('rect', M.trim, 13.1, -2.0, 13.1, 4.4, 3.8, 0.4, 1.2, 0.4);
+  B(M.door, 1.2, 2.2, 0.1, 9, 0, 4.5);
+  // excavated outline of the old rectangular fort with its three lost corner towers
+  const fx0 = 0, fz0 = 0, fx1 = 40, fz1 = -32;
+  wall(M.rubbleLight, fx0 + 4, fz0, fx1 - 4, fz0, 0.8, 0.9); wall(M.rubbleLight, fx1, fz0 - 4, fx1, fz1 + 4, 0.8, 0.9);
+  wall(M.rubbleLight, fx1 - 4, fz1, fx0 + 4, fz1, 0.8, 0.9); wall(M.rubbleLight, fx0, fz1 + 4, fx0, fz0 - 4.4, 0.8, 0.9);
+  for (const [x, z] of [[fx1, fz0], [fx1, fz1], [fx0, fz1]]) ringWall(M.rubbleLight, x, z, 4, 4, 0.9, 0.8, 20);
+  for (let i = 0; i < 5; i++) { const x = 8 + r() * 24, z = -8 - r() * 18; wall(M.rubbleLight, x, z, x + 4 + r() * 4, z, 0.5, 0.6); }
+  for (const [x, z] of [[24, 18], [30, 24], [18, 26], [36, 16], [42, 26]]) palm(x, z, 7 + r() * 3, 0.8 + r(), r() * 6.28, 500 + x);
+  flush(s);
+  return { scene: s, dur: 28, keys: [
+    [-60, 6, -60, 0, 4, 0], [-22, 3, -26, 0, 4, 0], [-10, 2.2, 10, 2, 5, 0], [12, 5, 14, 0, 6, 0], [22, 9, -12, 0, 5, 0],
+    [10, 22, -55, 18, 0, -14], [-40, 30, 30, 15, 2, -14]] };
+};
+
+BUILD.riffa = () => {
+  // plateau with the fort on its edge, the valley below to the north (-z)
+  const s = baseScene({ shadow: 80, land: [[-1500, -30], [1500, -30], [1500, 1500], [-1500, 1500]], groundMat: M.sand });
+  groundFromShape(shapeXZ(rectXZ(-1500, -1500, 1500, -46)), M.earthPale, -14);
+  { const g = new THREE.PlaneGeometry(3000, 1, 120, 4), pos = g.attributes.position, rr = rand(41);
+    for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), v = 0.5 - pos.getY(i), edge = v === 0 || v === 1; pos.setXYZ(i, x, -14 * v + (edge ? 0 : (rr() - 0.5) * 1.2), -30 - 16 * v + (edge ? 0 : (rr() - 0.5) * 2.2)); }
+    g.computeVertexNormals(); uvScale(g, 300, 3); put(M.cliff, g); }
+  const r = rand(42), WH = 7.5, t = 1.1;
+  const X0 = -26, X1 = 26, Z0 = -24, Z1 = 16;
+  wall(M.plasterR, X0, Z0, X1, Z0, WH, t); wall(M.plasterR, X1, Z0, X1, Z1, WH, t); wall(M.plasterR, X1, Z1, X0, Z1, WH, t); wall(M.plasterR, X0, Z1, X0, Z0, WH, t);
+  merlonLine('round', M.trimR, X0, Z0, X1, Z0, WH, 0.5, 1.15); merlonLine('round', M.trimR, X1, Z0, X1, Z1, WH, 0.5, 1.15);
+  merlonLine('round', M.trimR, X1, Z1, X0, Z1, WH, 0.5, 1.15); merlonLine('round', M.trimR, X0, Z1, X0, Z0, WH, 0.5, 1.15);
+  // corner towers: two round, two rectangular (the north-east one is the gate tower)
+  B(M.plasterR, 9, 12, 9, X1, 0, Z0); merlonLine('round', M.trimR, X1 - 4.5, Z0 - 4.5, X1 + 4.5, Z0 - 4.5, 12, 0.5, 1.15); merlonLine('round', M.trimR, X1 + 4.5, Z0 - 4.5, X1 + 4.5, Z0 + 4.5, 12, 0.5, 1.15);
+  merlonLine('round', M.trimR, X1 + 4.5, Z0 + 4.5, X1 - 4.5, Z0 + 4.5, 12, 0.5, 1.15); merlonLine('round', M.trimR, X1 - 4.5, Z0 + 4.5, X1 - 4.5, Z0 - 4.5, 12, 0.5, 1.15);
+  B(M.door, 2.0, 3.0, 0.15, X1 + 4.55, 0, Z0, Math.PI / 2);
+  B(M.plasterR, 7.5, 10, 7.5, X1, 0, Z1); merlonLine('round', M.trimR, X1 - 3.75, Z1 + 3.75, X1 + 3.75, Z1 + 3.75, 10, 0.5, 1.15); merlonLine('round', M.trimR, X1 + 3.75, Z1 - 3.75, X1 + 3.75, Z1 + 3.75, 10, 0.5, 1.15);
+  for (const [x, z] of [[X0, Z0], [X0, Z1]]) { C(M.plasterR, 4.2, 4.5, 9.5, x, 0, z, 26); merlonRing('round', M.trimR, x, z, 3.95, 9.5, 0.5, 18); }
+  for (const [x, z] of [[X1, Z0], [X1, Z1]]) for (let k = 0; k < 2; k++) B(M.dark, 0.6, 0.9, 0.1, x + (k ? 1.5 : -1.5), 6.5, z + (z < 0 ? -4.56 : 3.81));
+  // inner ranges of rooms dividing three courtyards
+  B(M.plasterR, 36, 7, 6, -6, 0, Z0 + 3.6);                       // north range
+  merlonLine('round', M.trimR, -24, Z0 + 6.6, 12, Z0 + 6.6, 7, 0.45, 1.15);
+  B(M.plasterR, 6, 6.5, 30, X1 - 3.6, 0, -2);                     // east range
+  B(M.plasterR, 0.9, 6.5, 14, 4, 0, -10);                          // wall between courtyards
+  merlonLine('round', M.trimR, 4, -17, 4, -3, 6.5, 0.45, 1.15);
+  for (let x = -20; x <= 8; x += 4.5) { B(M.door, 1.2, 2.3, 0.1, x, 0, Z0 + 6.66); B(M.dark, 0.8, 0.9, 0.1, x + 1.8, 4.2, Z0 + 6.66); }
+  for (let z = -12; z <= 10; z += 4.5) B(M.door, 0.1, 2.2, 1.2, X1 - 6.66, 0, z);
+  // wind tower (barjeel) rising from the north range
+  B(M.plasterR, 3.4, 5.5, 3.4, -14, 7, Z0 + 3.6);
+  for (const [dx, dz, ry] of [[0, 1.73, 0], [0, -1.73, 0], [1.73, 0, Math.PI / 2], [-1.73, 0, Math.PI / 2]]) B(M.dark, 2.2, 3.0, 0.1, -14 + dx, 8.8, Z0 + 3.6 + dz, ry);
+  B(M.trimR, 3.8, 0.3, 3.8, -14, 12.5, Z0 + 3.6);
+  // foundations visible in the main courtyard
+  for (let i = 0; i < 6; i++) { const x = -20 + r() * 20, z = -6 + r() * 16; wall(M.rubbleLight, x, z, x + 3 + r() * 4, z, 0.35, 0.5); }
+  flush(s);
+  return { scene: s, dur: 32, keys: [
+    [-30, -10, -110, 0, 2, -10], [10, -6, -80, 0, 6, -12], [55, 4, -45, 24, 6, -24], [48, 3, -4, 30, 3, -24], [30, 18, 30, 0, 3, -4],
+    [-10, 9, 6, -14, 9, -20], [-20, 14, -10, 0, -6, -120], [-70, 45, 70, 0, 4, -4]] };
+};
+
+BUILD.khamis = () => {
+  const s = baseScene({ shadow: 60 });
+  const r = rand(51);
+  groundFromShape(shapeXZ(rectXZ(-17, -14, 17, 14)), M.light, 0.02);
+  // modern boundary wall around the site
+  for (const [x1, z1, x2, z2] of [[-32, -24, 32, -24], [32, -24, 32, 26], [32, 26, 4, 26], [-4, 26, -32, 26], [-32, 26, -32, -24]]) wall(M.white, x1, z1, x2, z2, 1.6, 0.35);
+  // qibla wall with a mihrab niche
+  wall(M.rubble, -12, -10, 12, -10, 4.4, 0.9);
+  { const sh = new THREE.Shape(); sh.moveTo(-0.9, 0); sh.lineTo(0.9, 0); sh.lineTo(0.9, 2.2); sh.absarc(0, 2.2, 0.9, 0, Math.PI, false); sh.closePath();
+    const g = uvScale(new THREE.ExtrudeGeometry(sh, { depth: 0.12, bevelEnabled: false }), 1 / TILE); g.translate(0, 0, -9.5); put(M.dark, g); }
+  // three rows of arches on thick piers; the front row survives only in part
+  const piers = [-10, -6, -2, 2, 6, 10];
+  const front = [1.3, 2.8, 2.8, 1.0, 2.8, 2.8];
+  for (const [z, keep] of [[-5.5, 1], [-0.5, 1], [4.5, 0]]) {
+    piers.forEach((x, i) => B(M.rubble, 0.95, keep ? 2.8 : front[i], 1.0, x, 0, z));
+    for (let i = 0; i < piers.length - 1; i++) { if (!keep && !(i === 1 || i === 4)) continue; arch(M.rubble, (piers[i] + piers[i + 1]) / 2, z, 3.05, 0.95, 2.8, 4.4, 1.0); }
+  }
+  for (let i = 0; i < 6; i++) B(M.rubble, 0.95, 0.4 + r() * 0.6, 0.95, -12 + r() * 24, 0, 7 + r() * 5);
+  // twin minarets
+  for (const x of [-12.5, 12.5]) {
+    const z = 9.5;
+    B(M.rubble, 4.2, 6, 4.2, x, 0, z);
+    C(M.trim, 1.6, 1.75, 11, x, 6, z, 20);
+    C(M.trim, 2.15, 2.15, 0.3, x, 17, z, 22);
+    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; B(M.metal, 0.06, 0.85, 0.06, x + 2.05 * Math.cos(a), 17.3, z + 2.05 * Math.sin(a)); }
+    { const g = new THREE.TorusGeometry(2.05, 0.04, 6, 40); g.rotateX(Math.PI / 2); g.translate(x, 18.15, z); put(M.metal, g); }
+    C(M.trim, 1.0, 1.1, 4.0, x, 17.3, z, 18);
+    for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2; B(M.dark, 0.22, 0.9, 0.2, x + 1.06 * Math.cos(a), 18.8, z + 1.06 * Math.sin(a), -a + Math.PI / 2); }
+    { const g = new THREE.SphereGeometry(1.05, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2); g.translate(x, 21.3, z); put(M.trim, g); }
+    C(M.metal, 0.05, 0.05, 1.0, x, 22.2, z, 6);
+  }
+  for (const [x, z] of [[-26, 18], [-22, 22], [24, 20], [27, 14], [-27, -16], [26, -18], [20, 23]]) palm(x, z, 7 + r() * 3.5, 0.6 + r() * 1.2, r() * 6.28, 600 + x);
+  flush(s);
+  return { scene: s, dur: 30, keys: [
+    [0, 1.7, 22, 0, 3, -10], [0, 1.7, 7, 0, 2.6, -8], [-4, 1.7, -3, -8, 3.2, -3], [-4, 3, 4, -12.5, 16, 9.5], [0, 7, 34, 0, 12, 9.5],
+    [22, 12, 30, 0, 8, 2], [30, 26, -20, 0, 6, 2], [-30, 30, 42, 0, 6, 4]] };
+};
+
+BUILD.barbar = () => {
+  const s = baseScene({ shadow: 70, holes: [rectXZ(-32, -4, -24, 4)] });
+  const r = rand(61);
+  grassPatches(r, 70, 70, 0, 0, 30);
+  // lower and upper stone terraces
+  B(M.rubbleLight, 44, 1.2, 38, 0, 0, 0);
+  B(M.rubbleLight, 26, 1.2, 22, 2, 1.2, -1);
+  // oval enclosure on top and two round stones in its middle
+  ringWall(M.rubble, 2, -1, 8.5, 6.2, 0.9, 0.7, 30, 2.4);
+  C(M.rubble, 0.65, 0.7, 1.0, 0.5, 2.4, -1, 14); C(M.rubble, 0.65, 0.7, 1.0, 3.5, 2.4, -1, 14);
+  // steps up the east side
+  for (let i = 0; i < 4; i++) B(M.rubbleLight, 1.2, 0.3 * (i + 1), 6, 26.0 - i * 1.2, 0, 4);
+  for (let i = 0; i < 4; i++) B(M.rubbleLight, 1.2, 1.2 + 0.3 * (i + 1), 5, 18.6 - i * 1.2, 0, 4);
+  // the sacred well: a sunken stone basin with stairs going down
+  groundFromShape(shapeXZ(rectXZ(-32, -4, -24, 4)), M.hole, -3.2);
+  for (const [x1, z1, x2, z2] of [[-32, -4, -24, -4], [-24, -4, -24, 4], [-24, 4, -32, 4], [-32, 4, -32, -4]]) wall(M.rubble, x1, z1, x2, z2, 3.4, 0.5, -3.2);
+  for (let i = 0; i < 9; i++) B(M.rubbleLight, 0.55, 3.2 - i * 0.35, 2.2, -24.6 - i * 0.55, -3.2, -2.6);
+  // visitors' walkway along the south side
+  B(M.wood, 50, 0.15, 2.2, 0, 0.6, 24); for (let x = -24; x <= 24; x += 4) { B(M.wood, 0.15, 0.6, 0.15, x, 0, 23); B(M.wood, 0.15, 0.6, 0.15, x, 0, 25); B(M.wood, 0.1, 1.0, 0.1, x, 0.75, 22.95); }
+  B(M.wood, 50, 0.08, 0.08, 0, 1.7, 22.95);
+  flush(s);
+  return { scene: s, dur: 30, keys: [
+    [50, 30, 60, 0, 1, 0], [10, 3.0, 30, 0, 2, 0], [-20, 2.8, 26, -5, 2, 0], [-2, 9, 14, 2, 2.4, -1], [-12, 6, 10, -28, -2, 0],
+    [-24, 2, 6, -28, -3, -1], [-40, 18, -30, 0, 1, 0], [30, 34, -50, 0, 1, 0]] };
+};
+
+BUILD.saar_temple = () => {
+  const s = baseScene({ shadow: 70 });
+  const r = rand(71);
+  grassPatches(r, 40, 80, 0, 0, 40);
+  // temple: thick low walls around a hall of round column bases, altar at the north end
+  const P = [[-8, -6], [8, -7], [9, 7], [1.6, 6.6], [-1.6, 6.5], [-9, 6]];
+  for (let i = 0; i < P.length; i++) { const [x1, z1] = P[i], [x2, z2] = P[(i + 1) % P.length]; if (i === 3) continue; wall(M.rubble, x1, z1, x2, z2, 1.2, 0.85); }
+  for (const z of [-1.5, 2.5]) for (const x of [-4.5, 0, 4.5]) C(M.rubble, 0.65, 0.72, 1.5, x, 0, z, 14);
+  B(M.rubble, 1.6, 1.0, 1.0, 0, 0, -5.2);
+  // houses of the settlement in rows, and the main street from the south
+  for (let gx = -5; gx <= 5; gx++) for (let gz = -4; gz <= 4; gz++) {
+    const x = gx * 9.5, z = gz * 8.2;
+    if (Math.abs(x) < 15 && Math.abs(z) < 12) continue;
+    if (Math.abs(x) < 5 && z > 0) continue;
+    if (r() < 0.12) continue;
+    const w = 7 + r() * 1.5, d = 6 + r() * 1.2, h = 0.6 + r() * 0.5;
+    wall(M.rubbleLight, x - w / 2, z - d / 2, x + w / 2, z - d / 2, h, 0.5); wall(M.rubbleLight, x + w / 2, z - d / 2, x + w / 2, z + d / 2, h, 0.5);
+    wall(M.rubbleLight, x + w / 2, z + d / 2, x + 0.6, z + d / 2, h, 0.5); wall(M.rubbleLight, x - 0.6, z + d / 2, x - w / 2, z + d / 2, h, 0.5);
+    wall(M.rubbleLight, x - w / 2, z + d / 2, x - w / 2, z - d / 2, h, 0.5);
+    const px = x - w / 2 + w * (0.35 + r() * 0.3); wall(M.rubbleLight, px, z - d / 2, px, z + d / 2 - 1.2, h * 0.9, 0.45);
+    if (r() < 0.4) C(M.rubbleLight, 0.5, 0.55, 0.5, x + (r() - 0.5) * 3, 0, z + (r() - 0.5) * 2, 10);
+  }
+  flush(s);
+  return { scene: s, dur: 30, keys: [
+    [0, 2.0, 52, 0, 1.2, 0], [0, 1.8, 20, 0, 1, 0], [2, 3.2, 9, 0, 0.8, -1], [10, 6, 2, 0, 0.6, 0], [-14, 12, -14, 0, 0, 0],
+    [-30, 22, 10, 0, 0, 0], [0, 40, 40, 0, 0, -4]] };
+};
+
+BUILD.diraz = () => {
+  const s = baseScene({ shadow: 50 });
+  const r = rand(81);
+  grassPatches(r, 90, 60, 0, 0, 2);
+  for (const x of [-6, -3, 0, 3, 6]) C(M.rubble, 0.6, 0.65, 0.6, x, 0, -1.5, 16);
+  for (const x of [-6, -3, 3, 6]) C(M.rubble, 0.6, 0.65, 0.6, x, 0, 1.5, 16);
+  B(M.rubble, 1.4, 0.7, 1.4, 0, 0, 1.5);
+  for (const [x1, z1, x2, z2] of [[-19, -6, -10, -6], [-10, -6, -10, 6], [-10, 6, -19, 6], [-19, 6, -19, -6]]) wall(M.rubbleLight, x1, z1, x2, z2, 0.45, 0.75);
+  for (const [x1, z1, x2, z2] of [[-8.5, -4, 9, -4], [9, -4, 9, 4.2], [-8.5, 4.2, -2, 4.2]]) wall(M.rubbleLight, x1, z1, x2, z2, 0.3, 0.6);
+  for (let i = 0; i < 26; i++) B(M.rubbleLight, 0.3 + r() * 0.5, 0.15 + r() * 0.25, 0.3 + r() * 0.5, -22 + r() * 40, 0, -10 + r() * 20, r() * 3);
+  flush(s);
+  return { scene: s, dur: 24, keys: [
+    [-16, 2.2, 14, 0, 0.3, 0], [-9, 1.4, 5, 0, 0.3, 0], [0, 1.6, 5.5, 0, 0.3, -1], [8, 2.0, 4, 2, 0.3, 0], [10, 7, -10, -4, 0, 0], [-24, 12, -14, -10, 0, 0], [-6, 22, 24, -4, 0, 0]] };
+};
+
+BUILD.aali = () => {
+  const s = baseScene({ shadow: 90, groundMat: M.earthPale });
+  const r = rand(91);
+  const royal = [[0, 0, 22, 11], [-58, -34, 16, 8], [52, -46, 14, 7.5], [-30, 52, 12, 6]];
+  instanced(s, moundGeo(0.12), M.earth, royal.map(([x, z, R, H]) => ({ x, z, sx: R, sy: H, ry: r() * 3 })));
+  // rubble lying on the main royal mound
+  for (let i = 0; i < 40; i++) { const a = r() * 6.28, d = 6 + r() * 14, x = Math.cos(a) * d, z = Math.sin(a) * d, y = 11 * Math.pow(Math.cos(Math.min(1, d / 22) * Math.PI / 2), 1.5) - 0.3; B(M.rubbleLight, 0.5 + r() * 0.9, 0.3 + r() * 0.5, 0.5 + r() * 0.8, x, Math.min(y, 9.7), z, r() * 3); }
+  fenceRing(0, 0, 26, 40);
+  const small = [];
+  for (let i = 0; i < 700 && small.length < 190; i++) {
+    const x = -140 + r() * 280, z = -140 + r() * 280;
+    if (royal.some(([a, b, R]) => Math.hypot(x - a, z - b) < R + 6)) continue;
+    if (Math.abs(x - 3) < 9 && z > 18) continue;
+    if (small.some(m => Math.hypot(m.x - x, m.z - z) < m.sx + 5)) continue;
+    const R = 2.6 + r() * 2.4; small.push({ x, z, sx: R, sy: 1.0 + r() * 1.5, ry: r() * 3 });
+  }
+  instanced(s, moundGeo(), M.earth, small);
+  flush(s);
+  return { scene: s, dur: 30, keys: [
+    [0, 2.2, 90, 0, 6, 0], [6, 3, 40, 0, 8, 0], [24, 8, 26, 0, 9, 0], [8, 18, -30, 0, 8, 0], [-40, 14, -10, -58, 4, -34],
+    [-80, 22, 40, 0, 4, 0], [-30, 55, 110, 0, 0, 0]] };
+};
+
+BUILD.hamad = () => {
+  const s = baseScene({ shadow: 80, groundMat: M.earthPale, fogFar: 520 });
+  const r = rand(101), items = [];
+  for (let gx = -22; gx <= 22; gx++) for (let gz = -22; gz <= 22; gz++) {
+    if (r() < 0.12) continue;
+    const x = gx * 9.2 + (r() - 0.5) * 5, z = gz * 9.2 + (r() - 0.5) * 5;
+    if (Math.abs(x) < 5.5 && z > 30) continue;
+    const R = 3.0 + r() * 2.2; items.push({ x, z, sx: R, sy: 1.1 + r() * 1.3, ry: r() * 3 });
+  }
+  instanced(s, moundGeo(), M.earth, items);
+  flush(s);
+  return { scene: s, dur: 28, keys: [
+    [0, 1.9, 150, 0, 1.6, 0], [0, 2.0, 90, 0, 1.6, 20], [4, 2.4, 50, 0, 2, 0], [20, 10, 20, 0, 0, -40], [10, 40, 60, 0, 0, -60], [-40, 70, 140, 0, 0, -40]] };
+};
+
+BUILD.saar_honey = () => {
+  const s = baseScene({ shadow: 45 });
+  const r = rand(111);
+  const ringShape = new THREE.Shape(); ringShape.absarc(0, 0, 1, 0, Math.PI * 2, false);
+  const hole = new THREE.Path(); hole.absarc(0, 0, 0.76, 0, Math.PI * 2, true); ringShape.holes.push(hole);
+  const ringGeo = uvScale(new THREE.ExtrudeGeometry(ringShape, { depth: 1, bevelEnabled: false, curveSegments: 9 }), 0.35); ringGeo.rotateX(-Math.PI / 2);
+  const frame = mergeGeometries([boxGeo(1.8, 1, 0.16).translate(0, 0.5, -0.38), boxGeo(1.8, 1, 0.16).translate(0, 0.5, 0.38), boxGeo(0.16, 1, 0.6).translate(-0.82, 0.5, 0), boxGeo(0.16, 1, 0.6).translate(0.82, 0.5, 0)].map(g => g.toNonIndexed()));
+  const cells = [], frames = [], step = 2.25;
+  for (let i = -14; i <= 14; i++) for (let j = -14; j <= 14; j++) {
+    const x = (i + (j % 2 ? 0.5 : 0)) * step + (r() - 0.5) * 0.5, z = j * step * 0.866 + (r() - 0.5) * 0.5;
+    const d = Math.hypot(x, z * 1.15); if (d > 26 + (r() - 0.5) * 4) continue; if (r() < 0.05) continue;
+    const R = step * 0.6 + r() * 0.18, h = 0.45 + r() * 0.4;
+    cells.push({ x, z, sx: R, sy: h, ry: r() * 6 });
+    frames.push({ x, z, sx: 0.8 + r() * 0.15, sy: h * 0.8, sz: 1, ry: r() * Math.PI });
+  }
+  instanced(s, ringGeo, M.rubbleDark, cells);
+  instanced(s, frame, M.rubble, frames);
+  flush(s);
+  return { scene: s, dur: 26, keys: [
+    [0, 38, 30, 0, 0, 0], [0, 22, 14, 0, 0, -2], [-14, 6, 8, 0, 0, -4], [-6, 2.4, 2, 10, 0.3, -6], [10, 3.0, -8, 4, 0, 10], [24, 16, 18, 0, 0, 0]] };
+};
+
+BUILD.tylos = () => {
+  const s = baseScene({ shadow: 60, groundMat: M.earthPale });
+  const r = rand(121), R = 28, Hm = 3.2;
+  const domeH = (x, z) => { const d = Math.hypot(x, z) / R; return d >= 1 ? 0 : Hm * (1 - d * d); };
+  { const pts = []; for (let i = 0; i <= 16; i++) { const rr = R * (1 - i / 16); pts.push(new THREE.Vector2(Math.max(rr, 0.001), domeH(rr, 0))); } const g = uvScale(new THREE.LatheGeometry(pts, 40), 20, 2); put(M.earthPale, g); }
+  // excavated rectangular stone graves laid out in arcs on the mound
+  const frame = mergeGeometries([boxGeo(2.4, 1, 0.2).translate(0, 0.5, -0.5), boxGeo(2.4, 1, 0.2).translate(0, 0.5, 0.5), boxGeo(0.2, 1, 0.8).translate(-1.1, 0.5, 0), boxGeo(0.2, 1, 0.8).translate(1.1, 0.5, 0)].map(g => g.toNonIndexed()));
+  const floor = new THREE.BoxGeometry(2.0, 0.05, 0.8);
+  const graves = [], floors = [];
+  for (let ring = 0; ring < 6; ring++) {
+    const rad = 3.5 + ring * 3.4, n = Math.floor(rad * 2 * Math.PI / 2.9);
+    for (let k = 0; k < n; k++) {
+      if (r() < 0.15) continue;
+      const a = k / n * Math.PI * 2 + ring * 0.3 + (r() - 0.5) * 0.12, rr = rad + (r() - 0.5) * 1.2, x = rr * Math.cos(a), z = rr * Math.sin(a), y = domeH(x, z);
+      const ry = -a + Math.PI / 2 + (r() - 0.5) * 0.5;
+      graves.push({ x, y: y - 0.1, z, sx: 1, sy: 0.42, sz: 1, ry });
+      floors.push({ x, y: y + 0.03, z, sx: 1, sy: 1, sz: 1, ry });
+    }
+  }
+  instanced(s, frame, M.light, graves);
+  instanced(s, floor, M.hole, floors);
+  const lows = [];
+  for (let i = 0; i < 12; i++) { const a = r() * 6.28, d = 48 + r() * 50; lows.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, sx: 8 + r() * 6, sy: 1.6 + r() * 1.4, ry: r() * 3 }); }
+  instanced(s, moundGeo(), M.earth, lows);
+  flush(s);
+  return { scene: s, dur: 26, keys: [
+    [0, 2.4, 66, 0, 3, 0], [4, 4, 34, 0, 3, 0], [10, 7.5, 12, 0, 3.2, -2], [-6, 6, -4, 6, 2.8, -10], [-20, 14, -24, 0, 2, 0], [-50, 26, 40, 0, 2, 0]] };
+};
+
+/* flag that waves (Arad) */
+function addFlag(s) {
+  const f = s.userData.flag; if (!f) return;
+  const g = new THREE.PlaneGeometry(f.len, f.len * 0.6, 20, 10); g.translate(f.len / 2, 0, 0);
+  const mesh = new THREE.Mesh(g, M.flag); mesh.position.set(...f.pos); mesh.castShadow = true; s.add(mesh);
+  s.userData.flagMesh = mesh; s.userData.flagBase = g.attributes.position.array.slice();
+}
+
+/* ================================================================ player */
+const camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 2600);
+let playing = false, tNow = 0, active = null, raf = 0, lastTs = 0, capIdx = -1;
+const built = new Map();
+function getBuilt(id) {
+  if (!built.has(id)) {
+    const b = BUILD[id](), keys = b.keys;
+    b.P = new THREE.CatmullRomCurve3(keys.map(k => new V3(k[0], k[1], k[2])), false, 'centripetal');
+    b.T = new THREE.CatmullRomCurve3(keys.map(k => new V3(k[3], k[4], k[5])), false, 'centripetal');
+    if (b.scene.userData.flagMesh === undefined) addFlag(b.scene);
+    built.set(id, b);
+  }
+  return built.get(id);
+}
+function fmt(sec) { const s = Math.max(0, Math.round(sec)); return `${ar(Math.floor(s / 60))}:${ar(s % 60).padStart(2, '٠')}`; }
+function setPlaying(p) {
+  playing = p;
+  $('#ppBtn').innerHTML = `<svg><use href="#${p ? 'ic-pause' : 'ic-play'}"/></svg>`;
+  $('#ppBtn').setAttribute('aria-label', p ? 'إيقاف مؤقت' : 'تشغيل');
+  if (p) { $('#endCard').hidden = true; if (tNow >= active.b.dur) tNow = 0; }
+}
+function openPlayer(site) {
+  let b;
+  try { getRenderer(); b = getBuilt(site.id); }
+  catch (err) { console.error(err); alertBox('تعذّر تشغيل العرض ثلاثي الأبعاد على هذا الجهاز. جرّب متصفح Chrome أو Edge.'); return; }
+  const T = TYPES[site.type];
+  active = { site, b }; tNow = 0; capIdx = -1;
+  $('#siteModal').hidden = true; $('#player').hidden = false;
+  $('#stage').style.setProperty('--c', T.color);
+  $('#nameBug').innerHTML = `<span class="chipicon" style="--c:${T.color};background:${T.hex}"><svg><use href="#${T.icon}"/></svg></span>${site.name}`;
+  $('#titleCard').innerHTML = `<span class="typechip" style="--c:${T.hex}">${chipHTML(T)}</span><h2>${site.name}</h2>`;
+  $('#titleCard').classList.remove('out');
+  $('#caption').classList.remove('on'); $('#caption').style.setProperty('--c', T.hex);
+  $('#endTitle').textContent = site.name;
+  $('#endCard').hidden = true;
+  watched.add(site.id); const it = document.querySelector(`.item[data-id="${site.id}"] .seen`); if (it) it.hidden = false;
+  setPlaying(true); resize();
+  lastTs = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
+  $('#ppBtn').focus({ preventScroll: true });
+}
+function closePlayer() {
+  setPlaying(false); cancelAnimationFrame(raf); $('#player').hidden = true;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  if (active) openSite(active.site.id);
+}
+function resize() {
+  if (!renderer) return;
+  const w = glCanvas.clientWidth, h = glCanvas.clientHeight; if (!w || !h) return;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+document.addEventListener('fullscreenchange', () => setTimeout(resize, 50));
+const _p = new V3(), _t = new V3();
+function frameAt(t) {
+  const b = active.b, u0 = Math.min(1, Math.max(0, t / b.dur)), u = 0.5 - 0.5 * Math.cos(Math.PI * u0);
+  b.P.getPoint(u, _p); b.T.getPoint(u, _t);
+  camera.position.copy(_p); camera.lookAt(_t);
+  const sc = b.scene; sc.userData.sky.position.copy(camera.position);
+  if (sc.userData.flagMesh) {
+    const pos = sc.userData.flagMesh.geometry.attributes.position, base = sc.userData.flagBase, L = sc.userData.flag.len;
+    for (let i = 0; i < pos.count; i++) { const bx = base[i * 3], by = base[i * 3 + 1]; pos.setZ(i, Math.sin(bx * 2.3 - t * 5 + by * 0.8) * 0.13 * (bx / L)); }
+    pos.needsUpdate = true; sc.userData.flagMesh.geometry.computeVertexNormals();
+  }
+  if (waterTex) waterTex.offset.set(t * 0.004, t * 0.0026);
+  // overlays
+  $('#titleCard').classList.toggle('out', t > 2.6);
+  const caps = active.site.cap; let k = -1; for (let i = 0; i < caps.length; i++) if (t >= caps[i][0]) k = i;
+  const cap = $('#caption');
+  if (k !== capIdx) { capIdx = k; if (k >= 0) { cap.classList.remove('on'); setTimeout(() => { cap.textContent = caps[k][1]; cap.classList.add('on'); }, capIdx === 0 ? 0 : 200); } else cap.classList.remove('on'); }
+  $('#seek').value = String(Math.round(u0 * 1000));
+  $('#time').textContent = `${fmt(t)} / ${fmt(b.dur)}`;
+  renderer.render(sc, camera);
+}
+function loop(ts) {
+  const dt = Math.min(0.1, (ts - lastTs) / 1000); lastTs = ts;
+  if (playing) { tNow += dt; if (tNow >= active.b.dur) { tNow = active.b.dur; setPlaying(false); $('#endCard').hidden = false; $('#replayBtn').focus({ preventScroll: true }); } }
+  frameAt(tNow);
+  raf = requestAnimationFrame(loop);
+}
+$('#ppBtn').addEventListener('click', () => setPlaying(!playing));
+$('#rsBtn').addEventListener('click', () => { tNow = 0; capIdx = -1; setPlaying(true); });
+$('#replayBtn').addEventListener('click', () => { tNow = 0; capIdx = -1; setPlaying(true); });
+$('#backBtn').addEventListener('click', () => { closePlayer(); closeSite(); });
+$('#closeBtn').addEventListener('click', closePlayer);
+$('#seek').addEventListener('input', e => { if (!active) return; tNow = e.target.value / 1000 * active.b.dur; capIdx = -1; $('#endCard').hidden = true; });
+$('#fsBtn').addEventListener('click', async () => {
+  try { if (document.fullscreenElement) await document.exitFullscreen(); else await $('#stage').requestFullscreen(); } catch (e) { /* fullscreen not allowed here */ }
+});
+addEventListener('keydown', e => {
+  if (!$('#player').hidden) {
+    if (e.key === 'Escape') { e.preventDefault(); closePlayer(); }
+    else if (e.key === ' ' && e.target.tagName !== 'BUTTON') { e.preventDefault(); setPlaying(!playing); }
+  } else if (!$('#siteModal').hidden && e.key === 'Escape') closeSite();
+});
+function alertBox(msg) {
+  const p = document.createElement('p'); p.className = 'nopano'; p.textContent = msg; $('#siteCard .actions').appendChild(p);
+}
+
+/* ================================================================ real photos (Wikimedia Commons) */
+const PHOTOS = {"arad": [{"f": "arad_1.jpg", "cap": "قلعة عراد من الخارج، ويرفرف فوقها علم البحرين.", "by": "Francisco Anzola", "lic": "CC BY 3.0", "page": "File:Arad_Fort_(209908023).jpeg"}, {"f": "arad_2.jpg", "cap": "أسوار القلعة، وفي أركانها أبراج دائرية.", "by": "Zairon", "lic": "CC BY-SA 4.0", "page": "File:Arad_Qalat_Arad_Exterior_06.jpg"}, {"f": "arad_3.jpg", "cap": "برج من أبراج القلعة الأربعة.", "by": "Zairon", "lic": "CC BY-SA 4.0", "page": "File:Arad_Qalat_Arad_Exterior_09.jpg"}, {"f": "arad_4.jpg", "cap": "ساحة القلعة من الداخل.", "by": "Zairon", "lic": "CC BY-SA 4.0", "page": "File:Arad_Qalat_Arad_Inner_Courtyard_10.jpg"}], "riffa": [{"f": "riffa_1.jpg", "cap": "قلعة الشيخ سلمان بن أحمد الفاتح من الخارج.", "by": "Zairon", "lic": "CC BY-SA 4.0", "page": "File:Riffa_Riffa_Fort_Exterior_05.jpg"}, {"f": "riffa_2.jpg", "cap": "برج القلعة وعليه علم البحرين.", "by": "Zairon", "lic": "CC BY-SA 4.0", "page": "File:Riffa_Riffa_Fort_Exterior_09.jpg"}, {"f": "riffa_3.jpg", "cap": "الساحة الداخلية للقلعة وغرفها.", "by": "Zairon", "lic": "CC BY-SA 4.0", "page": "File:Riffa_Riffa_Fort_Inner_Courtyard_2.jpg"}, {"f": "riffa_4.jpg", "cap": "أحد أبراج القلعة الدائرية.", "by": "Zairon", "lic": "CC BY-SA 4.0", "page": "File:Riffa_Riffa_Fort_Exterior_Tower.jpg"}], "barbar": [{"f": "barbar_1.jpg", "cap": "بقايا معبد باربار ومصاطبه الحجرية.", "by": "O.Mustafin", "lic": "CC0", "page": "File:Barbar3.jpg"}, {"f": "barbar_2.jpg", "cap": "السور البيضاوي في وسط المعبد.", "by": "Richard Mortel", "lic": "CC BY 2.0", "page": "File:Barbar_temple,_Dilmun_culture,_ca._3000-2000_BCE;_Bahrain_(17).jpg"}, {"f": "barbar_3.jpg", "cap": "درج حجري ينزل داخل المعبد.", "by": "Graeme", "lic": "CC BY-SA 2.0", "page": "File:Barbar_Temple.jpg"}, {"f": "barbar_4.jpg", "cap": "حجارة دائرية في وسط المعبد.", "by": "O.Mustafin", "lic": "CC0", "page": "File:Barbar5.jpg"}], "qalat": [{"f": "qalat_1.jpg", "cap": "قلعة البحرين فوق التلّ الأثري.", "by": "Jacobs - Creative Bees", "lic": "CC BY 2.0", "page": "File:Bahrain_Fort_(Panorama_View).jpg", "pan": true}, {"f": "qalat_2.jpg", "cap": "ممرّ بأقواس حجرية داخل القلعة.", "by": "Richard Mortel", "lic": "CC BY 2.0", "page": "File:Bahrain_Fort_(21).jpg"}, {"f": "qalat_3.jpg", "cap": "بقايا المدينة القديمة المكتشفة حول القلعة.", "by": "Richard Mortel", "lic": "CC BY 2.0", "page": "File:Bahrain_Fort_(45).jpg"}, {"f": "qalat_4.jpg", "cap": "أسوار القلعة الضخمة.", "by": "Richard Mortel", "lic": "CC BY 2.0", "page": "File:Bahrain_Fort_(47).jpg"}], "saar_temple": [{"f": "saar_temple_1.jpg", "cap": "بقايا معبد سار.", "by": "O.Mustafin", "lic": "CC0", "page": "File:Saar2.jpg"}, {"f": "saar_temple_2.jpg", "cap": "بيوت مستوطنة سار القديمة حول المعبد.", "by": "O.Mustafin", "lic": "CC0", "page": "File:Saar1.jpg"}, {"f": "saar_temple_3.jpg", "cap": "بئر حجرية في المستوطنة.", "by": "O.Mustafin", "lic": "CC0", "page": "File:Saar4.jpg"}], "saar_honey": [{"f": "saar_honey_1.jpg", "cap": "أحد القبور الحجرية في مقبرة سار المتلاصقة.", "by": "O.Mustafin", "lic": "CC0", "page": "File:Saar6.jpg"}], "aali": [{"f": "aali_1.jpg", "cap": "التلّة الملكية رقم ١ في عالي.", "by": "Melanie Münzner / Think Heritage", "lic": "CC BY-SA 1.0", "page": "File:Bahrein-site_1542_0001.jpg"}, {"f": "aali_2.jpg", "cap": "تلال المدافن في عالي.", "by": "Step", "lic": "CC BY 2.0", "page": "File:A%27ali_Burial_Mounds.jpg"}, {"f": "aali_3.jpg", "cap": "غرفة الدفن داخل التلّة الملكية رقم ٨.", "by": "Melanie Münzner / Think Heritage", "lic": "CC BY-SA 1.0", "page": "File:Bahrein.-site_1542_0004.jpg"}, {"f": "aali_4.jpg", "cap": "مدخل غرفة الدفن في تلّة ملكية.", "by": "Melanie Münzner / Think Heritage", "lic": "CC BY-SA 1.0", "page": "File:Bahrein-site_1542_0006.jpg"}], "hamad": [{"f": "hamad_1.jpg", "cap": "حقل تلال المدافن في مدينة حمد.", "by": "Melanie Münzner / Think Heritage", "lic": "CC BY-SA 1.0", "page": "File:Bahrein-site_1542_0002.jpg"}, {"f": "hamad_2.jpg", "cap": "تلال المدافن في مدينة حمد عن قرب.", "by": "Melanie Münzner / Think Heritage", "lic": "CC BY-SA 1.0", "page": "File:Bahrein-site_1542_0007.jpg"}, {"f": "hamad_3.jpg", "cap": "سور حقل التلال مزيّن برسم ختم دلموني.", "by": "Melanie Münzner / Think Heritage", "lic": "CC BY-SA 1.0", "page": "File:Bahrein-site_1542_0014.jpg"}], "khamis": [{"f": "khamis_1.jpg", "cap": "مسجد الخميس اليوم بمنارتيه.", "by": "Mohamed Toorani", "lic": "CC BY-SA 4.0", "page": "File:Khamis_Mosque_2019.jpg"}, {"f": "khamis_2.jpg", "cap": "إحدى منارتي المسجد.", "by": "Rick's Images", "lic": "CC BY 2.0", "page": "File:Khamis_Mosque_Minaret.jpg"}, {"f": "khamis_3.jpg", "cap": "صورة قديمة للمسجد عام ١٩٥٦م.", "by": "Arthur Edward Broadbent Parsons", "lic": "OGL 2", "page": "File:Khamis_Mosque_1956.jpg"}], "bumaher": [{"f": "bumaher_1.jpg", "cap": "برج قلعة بو ماهر على البحر.", "by": "Diego Delso", "lic": "CC BY-SA 4.0", "page": "File:Fuerte_Bu_Maher,_Manama,_Bar%C3%A9in,_2024-08-18,_DD_32.jpg"}], "tylos": [{"f": "tylos_1.jpg", "cap": "شاهد قبر منحوت عُثر عليه في مدافن تايلوس بالشاخورة.", "by": "Sailko", "lic": "CC BY 3.0", "page": "File:Stele_funeraria_figurativa,_tardo_periodo_di_tylos,_al_shakhura,_II-III_secolo_circa.JPG"}, {"f": "tylos_2.jpg", "cap": "شاهد قبر آخر من مدافن الشاخورة.", "by": "Sailko", "lic": "CC BY 3.0", "page": "File:Stele_nephes,_primo_periodo_di_tylos,_da_al_shakhura,_II-I_secolo_ac_ca.JPG"}, {"f": "tylos_3.jpg", "cap": "إناء فخاري عُثر عليه في مدافن الشاخورة.", "by": "Sailko", "lic": "CC BY 3.0", "page": "File:Periodo_di_tylos,_caraffa,_al_shakhura,_I_secolo_ac-I_dc_ca.JPG"}]};
+const SLIDE_MS = 7000, TITLE_MS = 2600;
+let SS = null;
+function openSlides(site) {
+  const list = PHOTOS[site.id]; if (!list || !list.length) return;
+  const T = TYPES[site.type];
+  SS = { site, list, i: -1, playing: true, el: 0, last: performance.now(), front: $('#slideA'), back: $('#slideB'), raf: 0 };
+  $('#siteModal').hidden = true; $('#slides').hidden = false;
+  $('#sstage').style.setProperty('--c', T.hex);
+  $('#sNameBug').innerHTML = `<span class="chipicon" style="--c:${T.color};background:${T.hex}"><svg><use href="#${T.icon}"/></svg></span>${site.name}`;
+  $('#sTitle').innerHTML = `<span class="typechip" style="--c:${T.hex}">${chipHTML(T)}</span><h2>${site.name}</h2>`;
+  $('#sTitle').classList.remove('out'); SS.titleUntil = performance.now() + TITLE_MS;
+  $('#sbars').innerHTML = list.map(() => '<span><i></i></span>').join('');
+  $('#slideA').className = 'slide'; $('#slideB').className = 'slide';
+  watched.add(site.id); const it = document.querySelector(`.item[data-id="${site.id}"] .seen`); if (it) it.hidden = false;
+  goSlide(0); setSPlay(true);
+  cancelAnimationFrame(SS.raf); SS.raf = requestAnimationFrame(sLoop);
+  $('#sPlay').focus({ preventScroll: true });
+}
+function goSlide(i) {
+  const n = SS.list.length; i = (i + n) % n; const p = SS.list[i];
+  const el = SS.i === -1 ? SS.front : SS.back;
+  el.querySelector('.bg').style.backgroundImage = `url("img/${p.f}")`;
+  const img = el.querySelector('.ph'); img.src = `img/${p.f}`; img.alt = p.cap;
+  img.className = 'ph' + (p.cover ? ' cover' : '');
+  el.className = 'slide';
+  void el.offsetWidth;
+  el.className = 'slide on ' + (p.pan ? 'pan' : ('kb' + (i % 2 ? ' alt' : '')));
+  if (SS.i !== -1) { SS.front.classList.remove('on'); const t = SS.front; SS.front = SS.back; SS.back = t; }
+  SS.i = i; SS.el = 0;
+  const cap = $('#sCap'); cap.classList.add('hide'); setTimeout(() => { cap.textContent = p.cap; cap.classList.remove('hide'); }, 250);
+  const cr = $('#sCredit'); cr.innerHTML = `الصورة: <bdi>${p.by}</bdi> · <bdi>${p.lic}</bdi> · ويكيميديا كومنز`; cr.href = 'https://commons.wikimedia.org/wiki/' + p.page;
+  $('#sCount').textContent = `${ar(i + 1)} / ${ar(n)}`;
+  [...$('#sbars').children].forEach((b, k) => { b.firstChild.style.width = k < i ? '100%' : '0'; });
+}
+function setSPlay(p) {
+  SS.playing = p; $('#sPlay').innerHTML = `<svg><use href="#${p ? 'ic-pause' : 'ic-play'}"/></svg>`;
+  $('#sPlay').setAttribute('aria-label', p ? 'إيقاف مؤقت' : 'تشغيل');
+  [...document.querySelectorAll('#slides .ph')].forEach(im => im.style.animationPlayState = p ? 'running' : 'paused');
+}
+function sLoop(ts) {
+  if (!SS) return;
+  const dt = ts - SS.last; SS.last = ts;
+  if (SS.playing) SS.el += dt;
+  if (ts > SS.titleUntil) $('#sTitle').classList.add('out');
+  const dur = SS.list[SS.i].pan ? 9000 : SLIDE_MS;
+  const bar = $('#sbars').children[SS.i]; if (bar) bar.firstChild.style.width = Math.min(100, SS.el / dur * 100) + '%';
+  if (SS.el >= dur) { if (SS.i < SS.list.length - 1) goSlide(SS.i + 1); else { setSPlay(false); SS.el = dur; } }
+  SS.raf = requestAnimationFrame(sLoop);
+}
+function closeSlides() {
+  if (!SS) return; cancelAnimationFrame(SS.raf); const site = SS.site; SS = null; $('#slides').hidden = true;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  openSite(site.id);
+}
+$('#sNext').addEventListener('click', () => { if (SS) { goSlide(SS.i + 1); setSPlay(true); } });
+$('#sPrev').addEventListener('click', () => { if (SS) { goSlide(SS.i - 1); setSPlay(true); } });
+$('#sPlay').addEventListener('click', () => { if (!SS) return; if (!SS.playing && SS.i === SS.list.length - 1 && SS.el >= SLIDE_MS) goSlide(0); setSPlay(!SS.playing); });
+$('#sClose').addEventListener('click', closeSlides);
+$('#sDraw').addEventListener('click', () => { if (!SS) return; const site = SS.site; cancelAnimationFrame(SS.raf); SS = null; $('#slides').hidden = true; openPlayer(site); });
+$('#sFs').addEventListener('click', async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await $('#sstage').requestFullscreen(); } catch (e) { /* not allowed here */ } });
+addEventListener('keydown', e => {
+  if ($('#slides').hidden || !SS) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeSlides(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); goSlide(SS.i + 1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); goSlide(SS.i - 1); }
+  else if (e.key === ' ' && e.target.tagName !== 'BUTTON') { e.preventDefault(); setSPlay(!SS.playing); }
+});
+
+buildMap(); buildList();
+window.__atlas = { SITES, openSite, openSlides: id => openSlides(byId[id]), openPlayer: id => openPlayer(byId[id]), seek: t => { tNow = t; }, get t() { return tNow; }, setPlaying };
+</script>
+</body>
+</html>
