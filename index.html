@@ -152,7 +152,7 @@ html,body{margin:0;height:100%;background:#120c06;overflow:hidden;font-family:"B
     <button class="cb" id="nextBtn" title="التالي">التالي ⏭</button>
     <div id="prog"><div></div></div>
     <button class="cb" id="albumBtn">📒 ألبوم العائلات <span id="albumN">0</span>/12</button>
-    <button class="cb" id="voiceBtn" title="قراءة صوتية">🔇 راوٍ</button>
+    <button class="cb" id="voiceBtn" title="تشغيل/إيقاف الأصوات">🔊 صوت</button>
     <button class="cb" id="fsBtn" title="ملء الشاشة">⛶</button>
     <button class="cb" id="infoBtn" title="للمعلم">ℹ</button>
   </div>
@@ -183,6 +183,7 @@ html,body{margin:0;height:100%;background:#120c06;overflow:hidden;font-family:"B
         <tr><td>المحتوى</td><td>المعابد: أبنية دينية بناها أهل البحرين القدماء • المدافن: قبور بأشكال وحجوم مختلفة • مسجد الخميس: أقدم بناء إسلامي في مملكة البحرين • القلاع: مبانٍ عسكرية أُقيمت في الماضي لأغراض دفاعية.</td></tr>
         <tr><td>الهدف السلوكي</td><td>أن يصنّف التلميذ المواقع الأثرية المعطاة له في مملكة البحرين إلى معابد، ومدافن، ومساجد، وقلاع.</td></tr>
         <tr><td>مستوى الهدف</td><td>معرفي – التحليل</td></tr>
+        <tr><td>الأصوات</td><td>ElevenLabs</td></tr>
       </table>
       <div style="text-align:center;margin-top:12px"><button class="big" id="tClose" style="font-size:22px;padding:8px 30px">رجوع</button></div>
     </div>
@@ -292,7 +293,7 @@ const $=s=>document.querySelector(s);
 const stage=$('#stage');let scale=1;
 function fit(){scale=Math.min(innerWidth/1280,innerHeight/720);stage.style.transform=`scale(${scale})`;}addEventListener('resize',fit);fit();
 
-let si=-1, li=-1, playing=true, timer=null, voice=false, layerIdx=0, kbAnim=null, tries=0;
+let si=-1, li=-1, playing=true, timer=null, voice=true, layerIdx=0, kbAnim=null, tries=0;
 const album={temple:[],mound:[],mosque:[],fort:[]};
 const done=new Set();
 
@@ -329,26 +330,36 @@ function bubble(name,color,text,pos,fam){
 }
 
 function readTime(t){return Math.max(2600,900+t.length*68);}
-function speak(t,cb){ if(!voice||!('speechSynthesis' in window)){cb&&cb(false);return;}
-  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t.replace(/[«»…]/g,' '));u.lang='ar-SA';u.rate=.95;
-    const v=speechSynthesis.getVoices().find(v=>/^ar/i.test(v.lang));if(v)u.voice=v;
-    u.onend=()=>cb&&cb(true);u.onerror=()=>cb&&cb(false);speechSynthesis.speak(u);}catch(e){cb&&cb(false);} }
+/* ----- narration audio (ElevenLabs) : one shared player ----- */
+const AUD_ALIAS={"s08_01":"s04_01","s09_01":"s05_01","s10_01":"s06_01","s11_01":"s07_01","s12_01":"s04_01","s13_01":"s05_01","s14_01":"s06_01","s15_01":"s07_01","s07_02":"s04_02","s08_02":"s05_02","s09_02":"s06_02","s10_02":"s04_02","s11_02":"s05_02","s12_02":"s06_02","s13_02":"s04_02","s14_02":"s05_02"};
+const pad2=n=>String(n).padStart(2,'0');
+const snd=new Audio();snd.preload='auto';let sndCb=null,sndUnlocked=false;
+function audSrc(id){return 'audio/'+(AUD_ALIAS[id]||id)+'.mp3';}
+function stopAud(){sndCb=null;try{snd.pause();}catch(e){}}
+function fireAud(ok){const c=sndCb;sndCb=null;c&&c(ok);}
+snd.addEventListener('ended',()=>fireAud(true));snd.addEventListener('error',()=>fireAud(false));
+function playId(id,cb){stopAud();if(!voice||!id){cb&&cb(false);return;}
+  sndCb=cb||null;snd.muted=false;snd.src=audSrc(id);
+  try{const p=snd.play();if(p&&p.catch)p.catch(()=>{if(sndCb===cb)fireAud(false);});}catch(e){fireAud(false);}}
+function unlockAud(){if(sndUnlocked)return;sndUnlocked=true;try{snd.muted=true;snd.src=audSrc('s00_00');const p=snd.play();
+  if(p&&p.then)p.then(()=>{if(!sndCb){snd.pause();}snd.muted=false;}).catch(()=>{snd.muted=false;});}catch(e){snd.muted=false;}}
 
 let mode='auto', wd=null;
 function hint(on){$('#tapHint').classList.toggle('show',!!on);}
-function schedule(ms,text){clearTimeout(timer);clearTimeout(wd);hint(false);
-  if(mode==='manual'){ if(text)speak(text); timer=setTimeout(()=>hint(true),Math.min(ms,1600)); return; }
-  if(!playing)return;
-  if(voice&&text){ let fired=false; const go=d=>{if(fired)return;fired=true;clearTimeout(wd);if(playing&&mode==='auto')timer=setTimeout(advance,d);};
-    speak(text,ok=>go(ok?700:ms)); wd=setTimeout(()=>go(0), text.length*120+5000); }
-  else timer=setTimeout(advance,ms);}
+function schedule(ms,text,id){clearTimeout(timer);clearTimeout(wd);hint(false);
+  if(mode==='manual'){ stopAud(); if(id)playId(id); timer=setTimeout(()=>hint(true),Math.min(ms,1600)); return; }
+  if(!playing){stopAud();return;}
+  if(voice&&id){ let fired=false; const go=d=>{if(fired)return;fired=true;clearTimeout(wd);if(playing&&mode==='auto')timer=setTimeout(advance,d);};
+    const guard=()=>{ if(fired)return; if(!snd.paused&&!snd.ended){wd=setTimeout(guard,1000);return;} go(0); };
+    playId(id,ok=>go(ok?600:ms)); wd=setTimeout(guard, ms+6000); }
+  else { stopAud(); timer=setTimeout(advance,ms); } }
 function nextStep(){ if($('#choice').classList.contains('show')||!$('#album').classList.contains('hide')||!$('#title').classList.contains('hide'))return;
-  clearTimeout(timer);clearTimeout(wd);try{speechSynthesis.cancel();}catch(e){} advance(); }
+  clearTimeout(timer);clearTimeout(wd);stopAud(); advance(); }
 
 function progress(){const total=SCENES.length;$('#prog div').style.width=((si+ (li+1)/Math.max(1,SCENES[si]?.lines.length||1))/total*100)+'%';}
 
 function goScene(i){
-  clearTimeout(timer);hideTexts(true);hideChoice();$('#badges').innerHTML='';
+  clearTimeout(timer);clearTimeout(wd);stopAud();hideTexts(true);hideChoice();$('#badges').innerHTML='';
   si=i;li=-1;tries=0;const sc=SCENES[i];showPicture(sc);setFx(sc.fx);
   $('#banner').classList.remove('show');$('#minimap').classList.remove('show');
   if(sc.station){const s=SITES[sc.site];$('#banner').innerHTML=`المحطة ${sc.station}<small>من 12</small>`;
@@ -361,15 +372,15 @@ function goScene(i){
 function advance(){
   const sc=SCENES[si];li++;progress();
   if(li>=sc.lines.length){ if(si<SCENES.length-1)goScene(si+1); return; }
-  const L=sc.lines[li];
-  if(L.w==='cap'){ $('#caption').textContent=L.t;$('#caption').classList.remove('show');void $('#caption').offsetWidth;$('#caption').classList.add('show');$('#bubble').classList.remove('show');schedule(readTime(L.t),L.t); }
-  else if(L.w==='info'){ $('#info .txt').textContent=L.t;$('#info').classList.add('show');schedule(readTime(L.t)+800,L.t); }
-  else if(L.w==='site'){ const s=SITES[sc.site]||{};const nm=L.n||s.name||'';bubble(nm,'#8a5a2b',L.t,L.p);schedule(readTime(L.t),L.t); }
+  const L=sc.lines[li];const id='s'+pad2(si)+'_'+pad2(li);
+  if(L.w==='cap'){ $('#caption').textContent=L.t;$('#caption').classList.remove('show');void $('#caption').offsetWidth;$('#caption').classList.add('show');$('#bubble').classList.remove('show');schedule(readTime(L.t),L.t,id); }
+  else if(L.w==='info'){ $('#info .txt').textContent=L.t;$('#info').classList.add('show');schedule(readTime(L.t)+800,L.t,id); }
+  else if(L.w==='site'){ const s=SITES[sc.site]||{};const nm=L.n||s.name||'';bubble(nm,'#8a5a2b',L.t,L.p);schedule(readTime(L.t),L.t,id); }
   else if(L.w==='badge'){ const b=document.querySelector(`.badge[data-f="${L.f}"]`);document.querySelectorAll('.badge').forEach(x=>x.classList.remove('hi'));
-    if(b){b.classList.add('on','hi');}bubble('عائلة '+FAM[L.f].name,FAM[L.f].c,L.t,'tr',true);sparkleAt(b);schedule(readTime(L.t),L.t); }
+    if(b){b.classList.add('on','hi');}bubble('عائلة '+FAM[L.f].name,FAM[L.f].c,L.t,'tr',true);sparkleAt(b);schedule(readTime(L.t),L.t,id); }
   else if(L.w==='choice'){ showChoice(sc.site); }
   else if(L.w==='end'){ setTimeout(()=>openAlbum(true),2200); }
-  else { const [n,c]=WHO[L.w];bubble(n,c,L.t,L.p);schedule(readTime(L.t),L.t); }
+  else { const [n,c]=WHO[L.w];bubble(n,c,L.t,L.p);schedule(readTime(L.t),L.t,id); }
 }
 
 /* ----- badges (families intro) ----- */
@@ -396,13 +407,13 @@ function pick(k,f,btn){
     bubble('عائلة '+FAM[f].name,FAM[f].c,welcome,'tc',true);
     $('#info .txt').innerHTML=`<b style="color:${FAM[f].c}">${s.name}</b> ← ${FAM[f].name}: ${FAM[f].def}`;$('#info').classList.add('show');
     if(mode==='auto'&&!playing){playing=true;$('#playBtn').textContent='⏸';if(kbAnim)kbAnim.play();}
-    schedule(readTime(welcome)+600,welcome);
+    schedule(readTime(welcome)+600,welcome,'w'+pad2(k));
   }else{
     chime(false);tries++;btn.classList.remove('nope');void btn.offsetWidth;btn.classList.add('nope');
     const right=FAM[s.fam];
-    let msg=`تمهّل يا صديقي 🙂 ${FAM[f].name} ${FAM[f].def} فهل «${s.name}» كذلك؟ فكّروا مرة أخرى!`;
-    if(tries>=2){msg=`انظروا إلى العائلة المضيئة ✨ عائلة ${right.name}: ${right.def}`;document.querySelector(`.famBtn[data-f="${s.fam}"]`).classList.add('glow');}
-    bubble('بحّار','var(--bah)',msg,'tr');const B=$('#bubble');B.style.top='28px';B.style.maxWidth='760px';speak(msg);
+    let msg=`تمهّل يا صديقي! ${FAM[f].name} ${FAM[f].def} فهل هذا الموقع كذلك؟ فكّروا مرة أخرى!`;let aid='x_'+f;
+    if(tries>=2){msg=`انظروا إلى العائلة المضيئة! عائلة ${right.name}: ${right.def}`;aid='g_'+s.fam;document.querySelector(`.famBtn[data-f="${s.fam}"]`).classList.add('glow');}
+    bubble('بحّار','var(--bah)',msg,'tr');const B=$('#bubble');B.style.top='28px';B.style.maxWidth='760px';clearTimeout(wd);playId(aid);
   }
 }
 
@@ -454,7 +465,7 @@ function chime(ok){if(ok)[523,659,784,1047].forEach((f,i)=>tone(f,i*.09,.4));els
 /* ----- controls ----- */
 function setPlaying(p){playing=p;$('#playBtn').textContent=p?'⏸':'▶';if(mode==='manual')return;
   if(kbAnim){p?kbAnim.play():kbAnim.pause();}
-  if(!p){clearTimeout(timer);try{speechSynthesis.cancel();}catch(e){}}
+  if(!p){clearTimeout(timer);clearTimeout(wd);stopAud();}
   else if(!$('#choice').classList.contains('show'))schedule(800);}
 $('#playBtn').onclick=()=>setPlaying(!playing);
 $('#nextBtn').onclick=nextStep;
@@ -466,13 +477,13 @@ $('#modeBtn').onclick=()=>{ mode=mode==='auto'?'manual':'auto';
 // click on the picture = continue; keyboard: Space / ← next, → previous
 $('#vignette').style.pointerEvents='auto';$('#vignette').style.cursor='pointer';$('#vignette').onclick=nextStep;
 document.addEventListener('keydown',e=>{ if(e.code==='Space'||e.key==='ArrowLeft'){e.preventDefault();nextStep();} else if(e.key==='ArrowRight'){$('#prevBtn').click();} });
-$('#prevBtn').onclick=()=>{ if(!$('#title').classList.contains('hide'))return; try{speechSynthesis.cancel();}catch(e){} goScene(Math.max(0, li>1?si:si-1)); };
-$('#voiceBtn').onclick=()=>{voice=!voice;$('#voiceBtn').textContent=(voice?'🔊':'🔇')+' راوٍ';if(!voice)try{speechSynthesis.cancel();}catch(e){}};
+$('#prevBtn').onclick=()=>{ if(!$('#title').classList.contains('hide'))return; stopAud(); goScene(Math.max(0, li>1?si:si-1)); };
+$('#voiceBtn').onclick=()=>{voice=!voice;$('#voiceBtn').textContent=(voice?'🔊':'🔇')+' صوت';if(!voice){stopAud();if(mode==='auto'&&playing&&!$('#choice').classList.contains('show')){clearTimeout(wd);clearTimeout(timer);timer=setTimeout(advance,1200);}}};
 $('#fsBtn').onclick=async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen();}catch(e){}};
 $('#albumBtn').onclick=()=>openAlbum(false);
 const showT=()=>{$('#teacher').classList.remove('hide');};$('#infoBtn').onclick=showT;$('#tInfo').onclick=showT;$('#tClose').onclick=()=>$('#teacher').classList.add('hide');
 function restart(){$('#album').classList.add('hide');done.clear();FAM_ORDER.forEach(f=>album[f]=[]);$('#albumN').textContent=0;setPlaying(true);goScene(0);}
-$('#startBtn').onclick=()=>{tone(660,0,.15);$('#title').classList.add('hide');setPlaying(true);goScene(0);};
+$('#startBtn').onclick=()=>{unlockAud();tone(660,0,.15);$('#title').classList.add('hide');setPlaying(true);goScene(0);};
 // title background: first picture if available
 (()=>{const im=new Image();im.onload=()=>$('#title').style.setProperty('--tbg',`url(img/19.jpg)`);im.src='img/19.jpg';})();
 setFx('dust');
