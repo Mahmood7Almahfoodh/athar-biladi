@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>دلّوني يبحث عن عائلته</title>
+<title>طَق طَق يبحث عن عائلته</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;600;700;800&family=Lalezar&family=Tajawal:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
@@ -49,9 +49,10 @@ html,body{margin:0;height:100%;background:#120c06;overflow:hidden;font-family:"B
 #info .txt{background:#fffaf0;flex:1;font-size:24px;font-weight:700;color:var(--ink);padding:10px 20px;line-height:1.5}
 
 /* ---------- station banner + mini map ---------- */
-#banner{position:absolute;top:22px;left:50%;z-index:6;transform:translate(-50%,-220%);transition:transform .6s cubic-bezier(.3,1.5,.5,1);
+#banner{position:absolute;top:22px;left:50%;z-index:6;transform:translate(-50%,-220%);transition:transform .6s cubic-bezier(.3,1.5,.5,1),opacity .4s;
   background:linear-gradient(#b67a3f,#7c4a1e);color:#fff6dc;border:3px solid #3a2412;border-radius:16px;padding:6px 30px;font-family:"Lalezar","Tajawal";font-size:36px;box-shadow:0 6px 0 #3a2412;white-space:nowrap}
-#banner.show{transform:translate(-50%,0)}
+#banner.show{transform:translate(-50%,0);opacity:1}
+#banner:not(.show){opacity:0}
 #banner small{display:block;text-align:center;font-family:"Tajawal";font-weight:800;font-size:16px;opacity:.85;margin-top:-4px}
 #minimap{position:absolute;left:22px;top:22px;width:210px;height:250px;z-index:6;border-radius:16px;border:3px solid #3a2412;box-shadow:4px 5px 0 rgba(0,0,0,.35);
   background:#2b98c9;overflow:hidden;transform:translateX(-120%);transition:transform .6s cubic-bezier(.3,1.4,.5,1)}
@@ -85,6 +86,9 @@ html,body{margin:0;height:100%;background:#120c06;overflow:hidden;font-family:"B
 .badge svg{height:50px;width:64px}
 .badge div{font-size:26px;font-weight:800;color:var(--fc)}
 
+#tapHint{position:absolute;left:30px;bottom:80px;z-index:8;background:#ffd45a;color:#3a2412;font-family:"Tajawal";font-weight:800;font-size:22px;padding:6px 20px;border-radius:24px;border:3px solid #2a1a0c;box-shadow:0 4px 0 #2a1a0c;opacity:0;transform:translateY(10px);transition:.3s;pointer-events:none}
+#tapHint.show{opacity:1;transform:none;animation:tapPulse 1.2s ease-in-out infinite}
+@keyframes tapPulse{50%{transform:translateX(-6px)}}
 /* ---------- controls ---------- */
 #ctrl{position:absolute;left:0;right:0;bottom:0;height:62px;z-index:12;display:flex;align-items:center;gap:10px;padding:0 16px;background:linear-gradient(transparent,rgba(0,0,0,.65))}
 .cb{height:44px;min-width:44px;border-radius:22px;border:none;background:rgba(255,255,255,.92);font-family:"Tajawal";font-weight:800;font-size:19px;color:var(--ink);cursor:pointer;padding:0 14px;box-shadow:0 3px 0 rgba(0,0,0,.35)}
@@ -138,9 +142,11 @@ html,body{margin:0;height:100%;background:#120c06;overflow:hidden;font-family:"B
   <div id="bubble"><span class="who"></span><span class="tx"></span></div>
   <div id="badges"></div>
   <div id="info"><div class="lbl">📘 من درسي</div><div class="txt"></div></div>
+  <div id="tapHint">اضغط للمتابعة ⬅</div>
   <div id="choice"><div class="q"></div><div class="fams"></div></div>
 
   <div id="ctrl">
+    <button class="cb" id="modeBtn" title="تلقائي: القصة تتقدم وحدها وتتوقف عند الأسئلة فقط — يدوي: تتقدم بالضغط">🔁 تلقائي</button>
     <button class="cb" id="playBtn" title="تشغيل / إيقاف">⏸</button>
     <button class="cb" id="prevBtn" title="المشهد السابق">⏮ السابق</button>
     <button class="cb" id="nextBtn" title="التالي">التالي ⏭</button>
@@ -152,7 +158,7 @@ html,body{margin:0;height:100%;background:#120c06;overflow:hidden;font-family:"B
   </div>
 
   <div class="ov" id="title">
-    <h1>دلّوني يبحث عن عائلته</h1>
+    <h1>طَق طَق يبحث عن عائلته</h1>
     <div class="sub">قصة تفاعلية متحركة عن آثار بلادي</div>
     <button class="big" id="startBtn">ابدأ القصة ▶</button>
     <button class="lnk" id="tInfo">معلومات الوسيلة (للمعلم)</button>
@@ -171,7 +177,7 @@ html,body{margin:0;height:100%;background:#120c06;overflow:hidden;font-family:"B
     <div class="tcard">
       <h3>معلومات الوسيلة</h3>
       <table>
-        <tr><td>نوع الوسيلة</td><td>فيلم متحرك تفاعلي (قصة): «دلّوني يبحث عن عائلته»</td></tr>
+        <tr><td>نوع الوسيلة</td><td>فيلم متحرك تفاعلي (قصة): «طَق طَق يبحث عن عائلته»</td></tr>
         <tr><td>الكتاب / الصف</td><td>التربية للمواطنة – الصف الثالث الابتدائي</td></tr>
         <tr><td>عنوان الدرس</td><td>آثار بلادي</td></tr>
         <tr><td>المحتوى</td><td>المعابد: أبنية دينية بناها أهل البحرين القدماء • المدافن: قبور بأشكال وحجوم مختلفة • مسجد الخميس: أقدم بناء إسلامي في مملكة البحرين • القلاع: مبانٍ عسكرية أُقيمت في الماضي لأغراض دفاعية.</td></tr>
@@ -225,33 +231,34 @@ const SITES = [
   {img:'16', name:'معابد باربار', fam:'temple', at:[532,172], c1:'#e9d6a6', c2:'#6c5530',
    say:'أنا معابد باربار… لي درجات من الحجارة وبئر ماء، بناني أهل البحرين القدماء للعبادة.'}
 ];
-const ASK = ['هل أنا من عائلتك؟','ربما هذه عائلتي؟','هل تعرفني؟','هل أشبهك؟'];
-const NOTME = ['لا يا صغير، أنت لا تشبهني… لكن ساعد أصدقاءنا ليعرفوا عائلتي!','لست منّا يا دلّوني… فمن يعرف عائلتي؟','همم… لا أظن. لكن هل تعرفون أنتم إلى أيّ عائلة أنتمي؟'];
+const ASK = ['طَق طَق… هل أنا من عائلتك؟','طَق طَق… ربما هذه عائلتي؟','طَق طَق… هل تعرفني؟','طَق طَق… هل أشبهك؟'];
+const NOTME = ['لا يا صغير، أنت لا تشبهني… لكن ساعد أصدقاءنا ليعرفوا عائلتي!','لست منّا يا طَق طَق… فمن يعرف عائلتي؟','همم… لا أظن. لكن هل تعرفون أنتم إلى أيّ عائلة أنتمي؟'];
 
 /* Scene list. line types: cap (narration), info (lesson box), dal, bah, boy, all, site, fam (family voice), badge (family intro), choice */
 const SCENES = [
-  {img:'01', c1:'#3c4f78', c2:'#121a2c', d:'مخزن المتحف ليلاً، ودلّوني على صندوق عليه علامة استفهام', fx:'dust', kb:[[1.12,40,20],[1.0,-10,0]], lines:[
+  {img:'01', c1:'#3c4f78', c2:'#121a2c', d:'مخزن المتحف ليلاً، وطَق طَق على صندوق عليه علامة استفهام', fx:'dust', kb:[[1.12,40,20],[1.0,-10,0]], lines:[
     {w:'cap', t:'في ليلةٍ هادئة… داخل مخزن متحف البحرين'},
     {w:'dal', t:'آآه… أين أنا؟ من أنا؟ ومن أين جئت؟!', p:'tl'},
-    {w:'cap', t:'هذا دلّوني، حجرٌ أثري صغير… فقد ذاكرته!'},
+    {w:'cap', t:'هذا طَق طَق، حجرٌ أثري صغير… فقد ذاكرته!'},
+    {w:'cap', t:'وسمّوه «طَق طَق» لأنه يطرق كل بابٍ يمرّ به: طَق طَق!'},
     {w:'dal', t:'كل الآثار هنا تعرف عائلاتها… إلا أنا!', p:'tl'}]},
   {img:'02', c1:'#4a6a9a', c2:'#18233b', d:'النورس بحّار يدخل من النافذة', fx:'dust', kb:[[1.0,0,0],[1.1,-30,10]], lines:[
     {w:'bah', t:'مرحباً يا صغير! أنا بحّار، النورس الذي يعرف كل شبرٍ في البحرين.', p:'tr'},
     {w:'dal', t:'يا بحّار… هل تساعدني؟ أريد أن أجد عائلتي!', p:'tl'},
     {w:'bah', t:'هيّا بنا! سنطير فوق جزيرة البحرين ونزور المواقع الأثرية… لعلّ أحدها بيتك!', p:'tr'}]},
-  {img:'03', c1:'#ffb36b', c2:'#2d7fb0', d:'بحّار يطير بدلّوني فوق البحرين عند الشروق', fx:'birds', kb:[[1.15,30,0],[1.0,-30,-10]], lines:[
-    {w:'cap', t:'وطار بحّار ودلّوني مع شروق الشمس…'},
+  {img:'03', c1:'#ffb36b', c2:'#2d7fb0', d:'بحّار يحمل طَق طَق فوق البحرين عند الشروق', fx:'birds', kb:[[1.15,30,0],[1.0,-30,-10]], lines:[
+    {w:'cap', t:'وطار بحّار وطَق طَق مع شروق الشمس…'},
     {w:'dal', t:'يا بحّار، ما معنى «المواقع الأثرية»؟', p:'tl'},
     {w:'bah', t:'هي أماكن تتضمّن آثاراً قديمة تركها السلف، مثل: المعابد، والمدافن، والمساجد، والقلاع.', p:'tr'},
     {w:'info', t:'المواقع الأثرية: أماكن تتضمّن آثاراً قديمة تركها السلف، مثل: المعابد، والمدافن، والمساجد، والقلاع.'}]},
   {img:'04', c1:'#f6d79a', c2:'#9b6a2e', d:'العائلات الأربع: القلاع والمعابد والمدافن والمساجد', fx:'sparkle', kb:[[1.0,0,0],[1.08,0,-10]], lines:[
-    {w:'bah', t:'آثار بلادنا تنتمي إلى أربع عائلات… تعرّف عليها يا دلّوني!', p:'tr'},
+    {w:'bah', t:'آثار بلادنا تنتمي إلى أربع عائلات… تعرّف عليها يا طَق طَق!', p:'tr'},
     {w:'badge', f:'temple', t:'نحن عائلة المعابد: أبنية دينية بناها أهل البحرين القدماء.'},
     {w:'badge', f:'mound',  t:'نحن عائلة المدافن: قبور بأشكال وحجوم مختلفة.'},
     {w:'badge', f:'mosque', t:'وأنا من عائلة المساجد: مسجد الخميس، أقدم بناء إسلامي في مملكة البحرين.'},
     {w:'badge', f:'fort',   t:'نحن عائلة القلاع: مبانٍ عسكرية أُقيمت في الماضي لأغراض دفاعية.'},
     {w:'dal', t:'سأتذكّر العائلات الأربع جيداً… لعلّ إحداها عائلتي!', p:'tl'},
-    {w:'bah', t:'وأنتم يا أصدقاء… في كل موقع نزوره، ساعدونا لنعرف إلى أيّ عائلة ينتمي!', p:'tr'}]}
+    {w:'bah', t:'وأنتم يا أصدقاء… في كل موقع سيطرق طَق طَق الباب، فردّدوا معه: «طَق طَق»! ثم ساعدونا لنعرف إلى أيّ عائلة ينتمي الموقع.', p:'tr'}]}
 ];
 SITES.forEach((s,i)=>{
   const lines=[
@@ -264,8 +271,8 @@ SITES.forEach((s,i)=>{
   SCENES.push({img:s.img, c1:s.c1, c2:s.c2, d:s.name, site:i, station:i+1, fx:'sun', kb:[[1.0,20,0],[1.1,-20,-8]], lines});
 });
 SCENES.push(
-  {img:'17', c1:'#ffd27a', c2:'#9b6a2e', d:'دلّوني يعود إلى مكانه في جدار معابد باربار', fx:'sparkle', kb:[[1.12,0,10],[1.0,0,0]], lines:[
-    {w:'site', n:'معابد باربار', t:'أنت دلّوني! حجرٌ من جداري… سقطتَ منّي قبل زمن طويل!', p:'tr'},
+  {img:'17', c1:'#ffd27a', c2:'#9b6a2e', d:'طَق طَق يعود إلى مكانه في جدار معابد باربار', fx:'sparkle', kb:[[1.12,0,10],[1.0,0,0]], lines:[
+    {w:'site', n:'معابد باربار', t:'أنت طَق طَق! حجرٌ من جداري… سقطتَ منّي قبل زمن طويل!', p:'tr'},
     {w:'dal', t:'وجدتُ عائلتي! أنا حجرٌ من معابد باربار… من عائلة المعابد!', p:'tl'},
     {w:'bah', t:'كل حجرٍ في آثارنا له مكان… ويحكي قصة أجدادنا.', p:'tr'}]},
   {img:'18', c1:'#bfe3f2', c2:'#4b7c95', d:'طفل زائر يحاول أخذ حجر للذكرى', fx:'sun', kb:[[1.0,-10,0],[1.1,20,-8]], lines:[
@@ -275,7 +282,7 @@ SCENES.push(
     {w:'boy', t:'آسف! سألتقط صورة فقط… وسأحافظ على آثار بلادي.', p:'tr'},
     {w:'info', t:'مسؤوليتي: أحافظ على المواقع الأثرية؛ فلا أكتب عليها، ولا آخذ منها شيئاً.'}]},
   {img:'19', c1:'#ffb36b', c2:'#7c3d1e', d:'احتفال العائلات الأربع عند الغروب', fx:'confetti', kb:[[1.1,0,0],[1.0,0,0]], lines:[
-    {w:'cap', t:'وفي المساء… احتفلت العائلات الأربع بعودة دلّوني.'},
+    {w:'cap', t:'وفي المساء… احتفلت العائلات الأربع بعودة طَق طَق.'},
     {w:'all', t:'تاريخٌ عريق وآثارٌ خالدة… يحقّ لنا أن نفخر بها، ونحافظ عليها!', p:'tc'},
     {w:'end'}]}
 );
@@ -310,7 +317,7 @@ function hideTexts(all){ $('#bubble').classList.remove('show'); if(all){$('#capt
 function typeInto(el,text){el.innerHTML='';el.classList.add('tw');const words=text.split(' ');
   words.forEach((w,i)=>{const s=document.createElement('span');s.textContent=w+(i<words.length-1?' ':'');el.appendChild(s);setTimeout(()=>s.classList.add('v'),40+i*70);});}
 
-const WHO={dal:['دلّوني','var(--dal)'],bah:['بحّار','var(--bah)'],boy:['الطفل الزائر','var(--boy)'],all:['الجميع','var(--all)']};
+const WHO={dal:['طَق طَق','var(--dal)'],bah:['بحّار','var(--bah)'],boy:['الطفل الزائر','var(--boy)'],all:['الجميع','var(--all)']};
 function bubble(name,color,text,pos,fam){
   const b=$('#bubble');b.classList.remove('show','tr','tl','tc','fam');
   const P={tr:{right:'60px',left:'auto',top:'120px'},tl:{left:'60px',right:'auto',top:'150px'},tc:{left:'50%',right:'auto',top:'130px'}}[pos||'tr'];
@@ -327,9 +334,16 @@ function speak(t,cb){ if(!voice||!('speechSynthesis' in window)){cb&&cb(false);r
     const v=speechSynthesis.getVoices().find(v=>/^ar/i.test(v.lang));if(v)u.voice=v;
     u.onend=()=>cb&&cb(true);u.onerror=()=>cb&&cb(false);speechSynthesis.speak(u);}catch(e){cb&&cb(false);} }
 
-function schedule(ms,text){clearTimeout(timer);if(!playing)return;
-  if(voice&&text){speak(text,ok=>{ if(playing) timer=setTimeout(advance,ok?700:ms);});}
+let mode='auto', wd=null;
+function hint(on){$('#tapHint').classList.toggle('show',!!on);}
+function schedule(ms,text){clearTimeout(timer);clearTimeout(wd);hint(false);
+  if(mode==='manual'){ if(text)speak(text); timer=setTimeout(()=>hint(true),Math.min(ms,1600)); return; }
+  if(!playing)return;
+  if(voice&&text){ let fired=false; const go=d=>{if(fired)return;fired=true;clearTimeout(wd);if(playing&&mode==='auto')timer=setTimeout(advance,d);};
+    speak(text,ok=>go(ok?700:ms)); wd=setTimeout(()=>go(0), text.length*120+5000); }
   else timer=setTimeout(advance,ms);}
+function nextStep(){ if($('#choice').classList.contains('show')||!$('#album').classList.contains('hide')||!$('#title').classList.contains('hide'))return;
+  clearTimeout(timer);clearTimeout(wd);try{speechSynthesis.cancel();}catch(e){} advance(); }
 
 function progress(){const total=SCENES.length;$('#prog div').style.width=((si+ (li+1)/Math.max(1,SCENES[si]?.lines.length||1))/total*100)+'%';}
 
@@ -364,7 +378,7 @@ function buildBadges(){$('#badges').innerHTML=FAM_ORDER.map(f=>`<div class="badg
 /* ----- choice ----- */
 function showChoice(k){
   const s=SITES[k];$('#bubble').classList.remove('show');
-  $('#choice .q').innerHTML=`ساعدوا دلّوني: إلى أيّ عائلة ينتمي <b>«${s.name}»</b>؟`;
+  $('#choice .q').innerHTML=`ساعدوا طَق طَق: إلى أيّ عائلة ينتمي <b>«${s.name}»</b>؟`;
   $('#choice .fams').innerHTML=FAM_ORDER.map(f=>`<button class="famBtn" data-f="${f}" style="--fc:${FAM[f].c}"><div class="ic">${ICON[f]}</div><div class="nm">${FAM[f].name}</div><div class="df">${FAM[f].def}</div></button>`).join('');
   $('#choice').classList.add('show');
   document.querySelectorAll('.famBtn').forEach(b=>b.onclick=()=>pick(k,b.dataset.f,b));
@@ -381,7 +395,8 @@ function pick(k,f,btn){
       : `أحسنتم! مرحباً بـ«${s.name}» في عائلة ${FAM[f].name}… فـ${FAM[f].name} ${FAM[f].def}`;
     bubble('عائلة '+FAM[f].name,FAM[f].c,welcome,'tc',true);
     $('#info .txt').innerHTML=`<b style="color:${FAM[f].c}">${s.name}</b> ← ${FAM[f].name}: ${FAM[f].def}`;$('#info').classList.add('show');
-    const wasPlaying=playing;playing=true;schedule(readTime(welcome)+600,welcome);if(!wasPlaying){playing=false;clearTimeout(timer);}
+    if(mode==='auto'&&!playing){playing=true;$('#playBtn').textContent='⏸';if(kbAnim)kbAnim.play();}
+    schedule(readTime(welcome)+600,welcome);
   }else{
     chime(false);tries++;btn.classList.remove('nope');void btn.offsetWidth;btn.classList.add('nope');
     const right=FAM[s.fam];
@@ -397,7 +412,7 @@ function openAlbum(final){renderAlbum();
   $('#albumTitle').textContent=final?'📒 اكتمل ألبوم العائلات! — النهاية':'📒 ألبوم العائلات';
   $('#albumRow').innerHTML=final?`<button class="big" id="againBtn" style="font-size:24px;padding:8px 34px">شاهد القصة من جديد ↺</button>`:`<button class="big" id="albumClose" style="font-size:24px;padding:8px 34px">رجوع إلى القصة</button>`;
   $('#album').classList.remove('hide');
-  if(final){fxConfetti();$('#againBtn').onclick=restart;}else{const was=playing;setPlaying(false);$('#albumClose').onclick=()=>{$('#album').classList.add('hide');if(was)setPlaying(true);};}
+  if(final){fxConfetti();$('#againBtn').onclick=restart;}else{const was=playing;setPlaying(false);$('#albumClose').onclick=()=>{$('#album').classList.add('hide');if(was||mode==='manual')setPlaying(true);if(mode==='manual')hint(!$('#choice').classList.contains('show'));};}
 }
 
 /* ----- mini map ----- */
@@ -437,13 +452,21 @@ let AC=null;function tone(f,t,d,type='triangle',v=.16){try{AC=AC||new (window.Au
 function chime(ok){if(ok)[523,659,784,1047].forEach((f,i)=>tone(f,i*.09,.4));else{tone(392,0,.25,'sine',.12);tone(349,.18,.35,'sine',.12);}}
 
 /* ----- controls ----- */
-function setPlaying(p){playing=p;$('#playBtn').textContent=p?'⏸':'▶';
+function setPlaying(p){playing=p;$('#playBtn').textContent=p?'⏸':'▶';if(mode==='manual')return;
   if(kbAnim){p?kbAnim.play():kbAnim.pause();}
   if(!p){clearTimeout(timer);try{speechSynthesis.cancel();}catch(e){}}
   else if(!$('#choice').classList.contains('show'))schedule(800);}
 $('#playBtn').onclick=()=>setPlaying(!playing);
-$('#nextBtn').onclick=()=>{ if($('#choice').classList.contains('show'))return; clearTimeout(timer);try{speechSynthesis.cancel();}catch(e){} advance(); };
-$('#prevBtn').onclick=()=>{ try{speechSynthesis.cancel();}catch(e){} goScene(Math.max(0, li>1?si:si-1)); };
+$('#nextBtn').onclick=nextStep;
+$('#modeBtn').onclick=()=>{ mode=mode==='auto'?'manual':'auto';
+  $('#modeBtn').textContent=mode==='auto'?'🔁 تلقائي':'👆 يدوي';$('#playBtn').style.display=mode==='auto'?'':'none';
+  clearTimeout(timer);clearTimeout(wd);
+  if(mode==='manual'){hint(!$('#choice').classList.contains('show'));}
+  else{hint(false);playing=true;$('#playBtn').textContent='⏸';if(kbAnim)kbAnim.play();if(!$('#choice').classList.contains('show'))timer=setTimeout(advance,900);} };
+// click on the picture = continue; keyboard: Space / ← next, → previous
+$('#vignette').style.pointerEvents='auto';$('#vignette').style.cursor='pointer';$('#vignette').onclick=nextStep;
+document.addEventListener('keydown',e=>{ if(e.code==='Space'||e.key==='ArrowLeft'){e.preventDefault();nextStep();} else if(e.key==='ArrowRight'){$('#prevBtn').click();} });
+$('#prevBtn').onclick=()=>{ if(!$('#title').classList.contains('hide'))return; try{speechSynthesis.cancel();}catch(e){} goScene(Math.max(0, li>1?si:si-1)); };
 $('#voiceBtn').onclick=()=>{voice=!voice;$('#voiceBtn').textContent=(voice?'🔊':'🔇')+' راوٍ';if(!voice)try{speechSynthesis.cancel();}catch(e){}};
 $('#fsBtn').onclick=async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen();}catch(e){}};
 $('#albumBtn').onclick=()=>openAlbum(false);
