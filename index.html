@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دلّوني يبحث عن عائلته</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;600;700;800&family=Lalezar&family=Tajawal:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#3a2412;--temple:#2f7fc1;--mound:#a0672b;--mosque:#239b5c;--fort:#c8372d;--dal:#a8743d;--bah:#1d6fa8;--boy:#2e8b57;--all:#7b4bb7}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#120c06;overflow:hidden;font-family:"Baloo Bhaijaan 2","Tajawal","DejaVu Sans",sans-serif;user-select:none;-webkit-user-select:none}
+#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#stage{position:relative;width:1280px;height:720px;overflow:hidden;overflow:clip;background:#1d140b;border-radius:12px;box-shadow:0 10px 60px rgba(0,0,0,.6);transform-origin:center}
+
+/* ---------- picture layers (Ken Burns) ---------- */
+.layer{position:absolute;inset:0;opacity:0;transition:opacity 1s ease}
+.layer.on{opacity:1}
+.layer .pic{position:absolute;inset:-4%;width:108%;height:108%;object-fit:cover;will-change:transform}
+.ph{position:absolute;inset:-4%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;text-align:center;
+    background:radial-gradient(ellipse at 50% 40%,var(--c1,#6fb7d8),var(--c2,#20526e));font-family:"Tajawal",sans-serif}
+.ph .n{font-family:"Lalezar","Tajawal";font-size:110px;line-height:1;opacity:.35}
+.ph .d{font-size:30px;font-weight:800;max-width:900px;text-shadow:0 3px 8px rgba(0,0,0,.4)}
+.ph .h{font-size:20px;opacity:.8}
+#vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.45));z-index:2}
+#fx{position:absolute;left:0;top:0;width:1280px;height:720px;pointer-events:none;z-index:3}
+
+/* ---------- caption (narration) ---------- */
+#caption{position:absolute;top:22px;right:26px;max-width:640px;z-index:6;background:#fff3c4;border:3px solid #3a2412;border-radius:6px;padding:10px 20px;
+  font-size:26px;font-weight:700;color:var(--ink);line-height:1.45;box-shadow:5px 6px 0 rgba(0,0,0,.35);opacity:0;transform:translateY(-14px) rotate(-.6deg);transition:.45s}
+#caption.show{opacity:1;transform:rotate(-.6deg)}
+
+/* ---------- speech bubble ---------- */
+#bubble{position:absolute;z-index:7;max-width:560px;min-width:220px;background:#fff;border:3.5px solid #2a1a0c;border-radius:30px;padding:16px 26px 14px;
+  font-size:29px;font-weight:700;color:var(--ink);line-height:1.5;box-shadow:5px 7px 0 rgba(0,0,0,.3);opacity:0;transform:scale(.6);transition:opacity .25s, transform .35s cubic-bezier(.3,1.7,.5,1)}
+#bubble.show{opacity:1;transform:scale(1)}
+#bubble .who{position:absolute;top:-20px;right:22px;font-size:19px;font-weight:800;color:#fff;padding:2px 14px;border-radius:14px;border:3px solid #2a1a0c;background:var(--wc,#a8743d)}
+#bubble:after{content:"";position:absolute;bottom:-26px;width:34px;height:30px;background:#fff;border:3.5px solid #2a1a0c;border-top:none;border-left:none;clip-path:polygon(0 0,100% 0,100% 100%);}
+#bubble.tr:after{right:60px;transform:skewX(-20deg)} #bubble.tl:after{left:60px;transform:scaleX(-1) skewX(-20deg)} #bubble.tc:after{left:46%}
+#bubble.fam{border-width:4px}
+.tw span{opacity:0;transition:opacity .12s}
+.tw span.v{opacity:1}
+
+/* ---------- info box (from the lesson) ---------- */
+#info{position:absolute;left:26px;right:26px;bottom:84px;z-index:6;display:flex;align-items:stretch;border-radius:14px;overflow:hidden;border:3px solid #2a1a0c;box-shadow:4px 5px 0 rgba(0,0,0,.35);
+  opacity:0;transform:translateY(20px);transition:.45s}
+#info.show{opacity:1;transform:none}
+#info .lbl{background:#f28c38;color:#fff;font-weight:800;font-size:22px;padding:10px 18px;display:flex;align-items:center;white-space:nowrap}
+#info .txt{background:#fffaf0;flex:1;font-size:24px;font-weight:700;color:var(--ink);padding:10px 20px;line-height:1.5}
+
+/* ---------- station banner + mini map ---------- */
+#banner{position:absolute;top:22px;left:50%;z-index:6;transform:translate(-50%,-220%);transition:transform .6s cubic-bezier(.3,1.5,.5,1);
+  background:linear-gradient(#b67a3f,#7c4a1e);color:#fff6dc;border:3px solid #3a2412;border-radius:16px;padding:6px 30px;font-family:"Lalezar","Tajawal";font-size:36px;box-shadow:0 6px 0 #3a2412;white-space:nowrap}
+#banner.show{transform:translate(-50%,0)}
+#banner small{display:block;text-align:center;font-family:"Tajawal";font-weight:800;font-size:16px;opacity:.85;margin-top:-4px}
+#minimap{position:absolute;left:22px;top:22px;width:210px;height:250px;z-index:6;border-radius:16px;border:3px solid #3a2412;box-shadow:4px 5px 0 rgba(0,0,0,.35);
+  background:#2b98c9;overflow:hidden;transform:translateX(-120%);transition:transform .6s cubic-bezier(.3,1.4,.5,1)}
+#minimap.show{transform:none}
+#minimap svg{width:100%;height:100%}
+
+/* ---------- family choice ---------- */
+#choice{position:absolute;left:0;right:0;bottom:70px;z-index:9;display:flex;flex-direction:column;align-items:center;gap:12px;opacity:0;transform:translateY(40px);pointer-events:none;transition:.45s}
+#choice.show{opacity:1;transform:none;pointer-events:auto}
+#choice .q{background:#2a1a0c;color:#fff;font-size:28px;font-weight:800;padding:6px 28px;border-radius:30px;box-shadow:0 4px 0 rgba(0,0,0,.4)}
+#choice .q b{color:#ffd45a}
+.fams{display:flex;gap:16px}
+.famBtn{width:262px;border-radius:20px;border:4px solid #2a1a0c;background:#fffaf0;cursor:pointer;padding:10px 12px 12px;text-align:center;font-family:inherit;color:var(--ink);
+  box-shadow:0 7px 0 #2a1a0c;transition:transform .15s}
+.famBtn:hover{transform:translateY(-4px)}
+.famBtn:active{transform:translateY(4px);box-shadow:0 3px 0 #2a1a0c}
+.famBtn .ic{height:62px;display:flex;align-items:center;justify-content:center}
+.famBtn .ic svg{height:58px;width:72px}
+.famBtn .nm{font-size:30px;font-weight:800;line-height:1.2;color:var(--fc)}
+.famBtn .df{font-size:17px;font-weight:600;line-height:1.35;min-height:46px}
+.famBtn.glow{animation:glowB 1s ease-in-out infinite}
+@keyframes glowB{50%{box-shadow:0 7px 0 #2a1a0c,0 0 30px 10px #ffd45a}}
+.famBtn.nope{animation:nope .5s}
+@keyframes nope{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-5px)}}
+
+/* ---------- family badges row (intro scene) ---------- */
+#badges{position:absolute;left:0;right:0;bottom:180px;z-index:6;display:flex;justify-content:center;gap:22px;pointer-events:none}
+.badge{width:200px;border-radius:18px;border:4px solid #2a1a0c;background:#fffaf0;padding:8px;text-align:center;box-shadow:0 6px 0 #2a1a0c;opacity:0;transform:scale(.4) translateY(30px);transition:.5s cubic-bezier(.3,1.6,.5,1)}
+.badge.on{opacity:1;transform:none}
+.badge.hi{transform:scale(1.1);box-shadow:0 6px 0 #2a1a0c,0 0 26px 8px #ffd45a}
+.badge svg{height:50px;width:64px}
+.badge div{font-size:26px;font-weight:800;color:var(--fc)}
+
+/* ---------- controls ---------- */
+#ctrl{position:absolute;left:0;right:0;bottom:0;height:62px;z-index:12;display:flex;align-items:center;gap:10px;padding:0 16px;background:linear-gradient(transparent,rgba(0,0,0,.65))}
+.cb{height:44px;min-width:44px;border-radius:22px;border:none;background:rgba(255,255,255,.92);font-family:"Tajawal";font-weight:800;font-size:19px;color:var(--ink);cursor:pointer;padding:0 14px;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.cb:active{transform:translateY(2px)}
+#prog{flex:1;height:10px;border-radius:6px;background:rgba(255,255,255,.3);overflow:hidden;direction:rtl}
+#prog div{height:100%;width:0;background:linear-gradient(90deg,#ffd45a,#f28c38);transition:width .5s}
+#albumBtn{background:#ffd45a}
+
+/* ---------- overlays ---------- */
+.ov{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s}
+.ov.hide{opacity:0;pointer-events:none}
+#title{background:radial-gradient(ellipse at 50% 35%,rgba(255,240,200,.25),rgba(20,12,4,.85)),var(--tbg) center/cover}
+#title h1{margin:0;font-family:"Lalezar","Tajawal";font-size:104px;line-height:1.05;color:#fff3c4;text-shadow:0 6px 0 #7a3f12,0 12px 30px rgba(0,0,0,.6)}
+#title .sub{font-size:30px;font-weight:700;color:#fff;margin:6px 0 26px;text-shadow:0 2px 6px rgba(0,0,0,.7)}
+.big{font-family:"Tajawal";font-weight:800;font-size:34px;padding:12px 46px;border:none;border-radius:40px;cursor:pointer;color:#fff;background:linear-gradient(#ff8c42,#e0511b);box-shadow:0 8px 0 #9c2e0c,0 14px 22px rgba(0,0,0,.35)}
+.big:active{transform:translateY(6px);box-shadow:0 2px 0 #9c2e0c}
+.credit{position:absolute;bottom:18px;left:0;right:0;text-align:center;color:#fff;font-family:"Tajawal";font-weight:700;font-size:16px;opacity:.85;text-shadow:0 2px 4px #000}
+.lnk{margin-top:14px;background:none;border:none;color:#fff;font-family:"Tajawal";font-weight:800;font-size:19px;text-decoration:underline;cursor:pointer;text-shadow:0 2px 4px #000}
+
+#album{background:rgba(20,12,4,.82)}
+.albumCard{width:1160px;background:#fff8e6;border:5px solid #2a1a0c;border-radius:24px;padding:18px 24px 22px;box-shadow:0 14px 40px rgba(0,0,0,.5)}
+.albumCard h2{margin:0 0 12px;text-align:center;font-family:"Lalezar","Tajawal";font-size:46px;color:#7a3f12}
+.cols{display:flex;gap:14px}
+.col{flex:1;border:4px solid #2a1a0c;border-radius:16px;overflow:hidden;background:#fff}
+.col h3{margin:0;padding:8px;color:#fff;background:var(--fc);font-size:28px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
+.col h3 svg{height:34px;width:44px}
+.col .def{font-size:16px;font-weight:600;padding:6px 10px;background:#fbf1d8;border-bottom:2px solid #e8d6a8;min-height:54px;color:var(--ink)}
+.col ul{list-style:none;margin:0;padding:8px 12px;min-height:200px;font-size:22px;font-weight:700;color:var(--ink)}
+.col li{padding:5px 0;border-bottom:2px dashed #ead9b0;animation:pop .5s}
+.col li.empty{color:#bba98a;border:none;animation:none}
+@keyframes pop{0%{transform:scale(.6);opacity:0}}
+.albumCard .row{display:flex;justify-content:center;gap:16px;margin-top:16px}
+
+#teacher{background:rgba(5,20,35,.8)}
+.tcard{width:860px;background:#fffaf0;border:4px solid #c9952e;border-radius:22px;padding:22px 30px;font-family:"Tajawal";color:var(--ink);font-size:19px;line-height:1.6}
+.tcard h3{margin:0 0 8px;font-size:30px;color:#7a3f12}
+.tcard table{width:100%;border-collapse:collapse}
+.tcard td{border:2px solid #e2cfa0;padding:6px 12px;vertical-align:top}
+.tcard td:first-child{width:180px;font-weight:800;background:#fbefcf}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+  <div class="layer" id="L0"></div><div class="layer" id="L1"></div>
+  <div id="vignette"></div>
+  <canvas id="fx" width="1280" height="720"></canvas>
+
+  <div id="banner"></div>
+  <div id="minimap"></div>
+  <div id="caption"></div>
+  <div id="bubble"><span class="who"></span><span class="tx"></span></div>
+  <div id="badges"></div>
+  <div id="info"><div class="lbl">📘 من درسي</div><div class="txt"></div></div>
+  <div id="choice"><div class="q"></div><div class="fams"></div></div>
+
+  <div id="ctrl">
+    <button class="cb" id="playBtn" title="تشغيل / إيقاف">⏸</button>
+    <button class="cb" id="prevBtn" title="المشهد السابق">⏮ السابق</button>
+    <button class="cb" id="nextBtn" title="التالي">التالي ⏭</button>
+    <div id="prog"><div></div></div>
+    <button class="cb" id="albumBtn">📒 ألبوم العائلات <span id="albumN">0</span>/12</button>
+    <button class="cb" id="voiceBtn" title="قراءة صوتية">🔇 راوٍ</button>
+    <button class="cb" id="fsBtn" title="ملء الشاشة">⛶</button>
+    <button class="cb" id="infoBtn" title="للمعلم">ℹ</button>
+  </div>
+
+  <div class="ov" id="title">
+    <h1>دلّوني يبحث عن عائلته</h1>
+    <div class="sub">قصة تفاعلية متحركة عن آثار بلادي</div>
+    <button class="big" id="startBtn">ابدأ القصة ▶</button>
+    <button class="lnk" id="tInfo">معلومات الوسيلة (للمعلم)</button>
+    <div class="credit">إعداد: السيد محمود المحفوظ • مقرر TCED 411 • كلية محمد جابر الأنصاري للمعلمين</div>
+  </div>
+
+  <div class="ov hide" id="album">
+    <div class="albumCard">
+      <h2 id="albumTitle">📒 ألبوم العائلات</h2>
+      <div class="cols" id="cols"></div>
+      <div class="row" id="albumRow"><button class="big" id="albumClose" style="font-size:24px;padding:8px 34px">رجوع إلى القصة</button></div>
+    </div>
+  </div>
+
+  <div class="ov hide" id="teacher">
+    <div class="tcard">
+      <h3>معلومات الوسيلة</h3>
+      <table>
+        <tr><td>نوع الوسيلة</td><td>فيلم متحرك تفاعلي (قصة): «دلّوني يبحث عن عائلته»</td></tr>
+        <tr><td>الكتاب / الصف</td><td>التربية للمواطنة – الصف الثالث الابتدائي</td></tr>
+        <tr><td>عنوان الدرس</td><td>آثار بلادي</td></tr>
+        <tr><td>المحتوى</td><td>المعابد: أبنية دينية بناها أهل البحرين القدماء • المدافن: قبور بأشكال وحجوم مختلفة • مسجد الخميس: أقدم بناء إسلامي في مملكة البحرين • القلاع: مبانٍ عسكرية أُقيمت في الماضي لأغراض دفاعية.</td></tr>
+        <tr><td>الهدف السلوكي</td><td>أن يصنّف التلميذ المواقع الأثرية المعطاة له في مملكة البحرين إلى معابد، ومدافن، ومساجد، وقلاع.</td></tr>
+        <tr><td>مستوى الهدف</td><td>معرفي – التحليل</td></tr>
+      </table>
+      <div style="text-align:center;margin-top:12px"><button class="big" id="tClose" style="font-size:22px;padding:8px 30px">رجوع</button></div>
+    </div>
+  </div>
+</div></div>
+
+<script>
+/* ===================== CONTENT ===================== */
+const FAM = {
+  temple:{name:'المعابد', c:'var(--temple)', def:'أبنية دينية بناها أهل البحرين القدماء.'},
+  mound: {name:'المدافن', c:'var(--mound)',  def:'قبور بأشكال وحجوم مختلفة.'},
+  mosque:{name:'المساجد', c:'var(--mosque)', def:'مسجد الخميس، أقدم بناء إسلامي في مملكة البحرين.'},
+  fort:  {name:'القلاع',  c:'var(--fort)',   def:'مبانٍ عسكرية أُقيمت في الماضي لأغراض دفاعية.'}
+};
+const FAM_ORDER = ['temple','mound','mosque','fort']; // as in the book table, read right-to-left
+const ICON = {
+  fort:`<svg viewBox="0 0 60 50"><rect x="8" y="18" width="44" height="30" fill="#f3dcaa" stroke="#3a2412" stroke-width="2.5"/><g fill="#f3dcaa" stroke="#3a2412" stroke-width="2.5"><rect x="8" y="10" width="9" height="9"/><rect x="25.5" y="10" width="9" height="9"/><rect x="43" y="10" width="9" height="9"/></g><path d="M23 48 v-11 a7 7 0 0 1 14 0 v11z" fill="#7a4a1e"/></svg>`,
+  temple:`<svg viewBox="0 0 60 50"><rect x="4" y="40" width="52" height="8" fill="#e9cd93" stroke="#3a2412" stroke-width="2.5"/><rect x="11" y="32" width="38" height="8" fill="#e9cd93" stroke="#3a2412" stroke-width="2.5"/><g fill="#f7e4b8" stroke="#3a2412" stroke-width="2.5"><rect x="15" y="11" width="7" height="21"/><rect x="26.5" y="11" width="7" height="21"/><rect x="38" y="11" width="7" height="21"/></g><path d="M8 11 L30 3 L52 11Z" fill="#e9cd93" stroke="#3a2412" stroke-width="2.5" stroke-linejoin="round"/></svg>`,
+  mound:`<svg viewBox="0 0 60 50"><g fill="#d9ae6c" stroke="#3a2412" stroke-width="2.5"><path d="M2 46 A13 16 0 0 1 28 46Z"/><path d="M32 46 A13 16 0 0 1 58 46Z"/><path d="M14 46 A16 24 0 0 1 46 46Z"/></g></svg>`,
+  mosque:`<svg viewBox="0 0 60 50"><g fill="#f3dcaa" stroke="#3a2412" stroke-width="2.5"><rect x="16" y="24" width="28" height="24"/><rect x="6" y="6" width="7" height="42"/><rect x="47" y="6" width="7" height="42"/></g><g fill="#3a2412"><path d="M6 6 L9.5 0 L13 6Z"/><path d="M47 6 L50.5 0 L54 6Z"/></g><path d="M25 48 v-10 a5 5 0 0 1 10 0 v10z" fill="#7a4a1e"/></svg>`
+};
+// map coordinates (same island drawing as the mini map)
+const SITES = [
+  {img:'05', name:'قلعة عراد', fam:'fort', at:[790,165], c1:'#8fc9e6', c2:'#2b6f93',
+   say:'أنا قلعة عراد! لي أسوار عالية وأبراج مستديرة… بناني الناس في الماضي لأحمي البلاد من الأعداء.'},
+  {img:'06', name:'تلال عالي', fam:'mound', at:[590,290], c1:'#f0cf8c', c2:'#9b6a2e',
+   say:'نحن تلال عالي… تلال كبيرة من التراب، وتحتنا قبور الناس القدماء.'},
+  {img:'07', name:'معبد سار', fam:'temple', at:[515,248], c1:'#e9d3a0', c2:'#7d6133',
+   say:'أنا معبد سار… بقيت مني جدران وأعمدة من الحجر، بناني أهل البحرين القدماء مكاناً للعبادة.'},
+  {img:'08', name:'مسجد الخميس', fam:'mosque', at:[630,205], c1:'#cfe7c2', c2:'#3f7a4b',
+   say:'أنا مسجد الخميس، ويسمّونني «أبو منارتين»… وأنا أقدم بناء إسلامي في مملكة البحرين.'},
+  {img:'09', name:'قلعة البحرين', fam:'fort', at:[595,158], c1:'#a9d6ee', c2:'#355f7a',
+   say:'أنا قلعة البحرين! أقف على تلٍّ قرب البحر، وبُنيتُ للدفاع عن البلاد… وأنا في قائمة التراث العالمي!'},
+  {img:'10', name:'مدافن سار المتشابكة', fam:'mound', at:[540,265], c1:'#ead29f', c2:'#8a6a35',
+   say:'نحن مدافن سار المتشابكة… قبور كثيرة متلاصقة كأنها خلية نحل.'},
+  {img:'11', name:'معبد الدراز', fam:'temple', at:[492,195], c1:'#e6d2a2', c2:'#6f5a30',
+   say:'أنا معبد الدراز… بقيت مني قواعد أعمدة من الحجر، وكنت مكاناً دينياً لأهل البحرين القدماء.'},
+  {img:'12', name:'قلعة بو ماهر', fam:'fort', at:[738,172], c1:'#8fd0ee', c2:'#215d80',
+   say:'أنا قلعة بو ماهر… أقف على شاطئ المحرّق ببرجي المستدير، وأحرس البحر منذ زمن بعيد.'},
+  {img:'13', name:'تلال مدينة حمد', fam:'mound', at:[548,330], c1:'#efd59a', c2:'#94703a',
+   say:'نحن تلال مدينة حمد… قبور قديمة على شكل تلال، وحولنا اليوم بيوت المدينة.'},
+  {img:'14', name:'قلعة الشيخ سلمان بن أحمد الفاتح', fam:'fort', at:[632,345], c1:'#f2d7a2', c2:'#8a5a2b',
+   say:'أنا قلعة الشيخ سلمان بن أحمد الفاتح… أسواري عالية وأطلّ على الوادي، وبُنيتُ للدفاع عن البلاد.'},
+  {img:'15', name:'مدافن تايلوس', fam:'mound', at:[565,355], c1:'#e7cf9c', c2:'#80612f',
+   say:'نحن مدافن تايلوس… قبور قديمة من الحجر بأشكال مختلفة.'},
+  {img:'16', name:'معابد باربار', fam:'temple', at:[532,172], c1:'#e9d6a6', c2:'#6c5530',
+   say:'أنا معابد باربار… لي درجات من الحجارة وبئر ماء، بناني أهل البحرين القدماء للعبادة.'}
+];
+const ASK = ['هل أنا من عائلتك؟','ربما هذه عائلتي؟','هل تعرفني؟','هل أشبهك؟'];
+const NOTME = ['لا يا صغير، أنت لا تشبهني… لكن ساعد أصدقاءنا ليعرفوا عائلتي!','لست منّا يا دلّوني… فمن يعرف عائلتي؟','همم… لا أظن. لكن هل تعرفون أنتم إلى أيّ عائلة أنتمي؟'];
+
+/* Scene list. line types: cap (narration), info (lesson box), dal, bah, boy, all, site, fam (family voice), badge (family intro), choice */
+const SCENES = [
+  {img:'01', c1:'#3c4f78', c2:'#121a2c', d:'مخزن المتحف ليلاً، ودلّوني على صندوق عليه علامة استفهام', fx:'dust', kb:[[1.12,40,20],[1.0,-10,0]], lines:[
+    {w:'cap', t:'في ليلةٍ هادئة… داخل مخزن متحف البحرين'},
+    {w:'dal', t:'آآه… أين أنا؟ من أنا؟ ومن أين جئت؟!', p:'tl'},
+    {w:'cap', t:'هذا دلّوني، حجرٌ أثري صغير… فقد ذاكرته!'},
+    {w:'dal', t:'كل الآثار هنا تعرف عائلاتها… إلا أنا!', p:'tl'}]},
+  {img:'02', c1:'#4a6a9a', c2:'#18233b', d:'النورس بحّار يدخل من النافذة', fx:'dust', kb:[[1.0,0,0],[1.1,-30,10]], lines:[
+    {w:'bah', t:'مرحباً يا صغير! أنا بحّار، النورس الذي يعرف كل شبرٍ في البحرين.', p:'tr'},
+    {w:'dal', t:'يا بحّار… هل تساعدني؟ أريد أن أجد عائلتي!', p:'tl'},
+    {w:'bah', t:'هيّا بنا! سنطير فوق جزيرة البحرين ونزور المواقع الأثرية… لعلّ أحدها بيتك!', p:'tr'}]},
+  {img:'03', c1:'#ffb36b', c2:'#2d7fb0', d:'بحّار يطير بدلّوني فوق البحرين عند الشروق', fx:'birds', kb:[[1.15,30,0],[1.0,-30,-10]], lines:[
+    {w:'cap', t:'وطار بحّار ودلّوني مع شروق الشمس…'},
+    {w:'dal', t:'يا بحّار، ما معنى «المواقع الأثرية»؟', p:'tl'},
+    {w:'bah', t:'هي أماكن تتضمّن آثاراً قديمة تركها السلف، مثل: المعابد، والمدافن، والمساجد، والقلاع.', p:'tr'},
+    {w:'info', t:'المواقع الأثرية: أماكن تتضمّن آثاراً قديمة تركها السلف، مثل: المعابد، والمدافن، والمساجد، والقلاع.'}]},
+  {img:'04', c1:'#f6d79a', c2:'#9b6a2e', d:'العائلات الأربع: القلاع والمعابد والمدافن والمساجد', fx:'sparkle', kb:[[1.0,0,0],[1.08,0,-10]], lines:[
+    {w:'bah', t:'آثار بلادنا تنتمي إلى أربع عائلات… تعرّف عليها يا دلّوني!', p:'tr'},
+    {w:'badge', f:'temple', t:'نحن عائلة المعابد: أبنية دينية بناها أهل البحرين القدماء.'},
+    {w:'badge', f:'mound',  t:'نحن عائلة المدافن: قبور بأشكال وحجوم مختلفة.'},
+    {w:'badge', f:'mosque', t:'وأنا من عائلة المساجد: مسجد الخميس، أقدم بناء إسلامي في مملكة البحرين.'},
+    {w:'badge', f:'fort',   t:'نحن عائلة القلاع: مبانٍ عسكرية أُقيمت في الماضي لأغراض دفاعية.'},
+    {w:'dal', t:'سأتذكّر العائلات الأربع جيداً… لعلّ إحداها عائلتي!', p:'tl'},
+    {w:'bah', t:'وأنتم يا أصدقاء… في كل موقع نزوره، ساعدونا لنعرف إلى أيّ عائلة ينتمي!', p:'tr'}]}
+];
+SITES.forEach((s,i)=>{
+  const lines=[
+    {w:'site', t:s.say, p:'tr'},
+    {w:'dal', t:ASK[i%ASK.length], p:'tl'},
+  ];
+  if(i<SITES.length-1) lines.push({w:'site', t:NOTME[i%NOTME.length], p:'tr'});
+  else lines.push({w:'site', t:'انتظر… انتظر! هذا الحجر الصغير… أعرفه جيداً!', p:'tr'});
+  lines.push({w:'choice'});
+  SCENES.push({img:s.img, c1:s.c1, c2:s.c2, d:s.name, site:i, station:i+1, fx:'sun', kb:[[1.0,20,0],[1.1,-20,-8]], lines});
+});
+SCENES.push(
+  {img:'17', c1:'#ffd27a', c2:'#9b6a2e', d:'دلّوني يعود إلى مكانه في جدار معابد باربار', fx:'sparkle', kb:[[1.12,0,10],[1.0,0,0]], lines:[
+    {w:'site', n:'معابد باربار', t:'أنت دلّوني! حجرٌ من جداري… سقطتَ منّي قبل زمن طويل!', p:'tr'},
+    {w:'dal', t:'وجدتُ عائلتي! أنا حجرٌ من معابد باربار… من عائلة المعابد!', p:'tl'},
+    {w:'bah', t:'كل حجرٍ في آثارنا له مكان… ويحكي قصة أجدادنا.', p:'tr'}]},
+  {img:'18', c1:'#bfe3f2', c2:'#4b7c95', d:'طفل زائر يحاول أخذ حجر للذكرى', fx:'sun', kb:[[1.0,-10,0],[1.1,20,-8]], lines:[
+    {w:'cap', t:'وفي اليوم التالي… جاء الزوّار إلى معابد باربار.'},
+    {w:'boy', t:'سآخذ هذا الحجر الصغير معي للذكرى!', p:'tr'},
+    {w:'dal', t:'توقّف يا صديقي! الآثار ليست للأخذ ولا للكتابة عليها… نحافظ عليها لأنها تاريخ بلادنا.', p:'tl'},
+    {w:'boy', t:'آسف! سألتقط صورة فقط… وسأحافظ على آثار بلادي.', p:'tr'},
+    {w:'info', t:'مسؤوليتي: أحافظ على المواقع الأثرية؛ فلا أكتب عليها، ولا آخذ منها شيئاً.'}]},
+  {img:'19', c1:'#ffb36b', c2:'#7c3d1e', d:'احتفال العائلات الأربع عند الغروب', fx:'confetti', kb:[[1.1,0,0],[1.0,0,0]], lines:[
+    {w:'cap', t:'وفي المساء… احتفلت العائلات الأربع بعودة دلّوني.'},
+    {w:'all', t:'تاريخٌ عريق وآثارٌ خالدة… يحقّ لنا أن نفخر بها، ونحافظ عليها!', p:'tc'},
+    {w:'end'}]}
+);
+
+/* ===================== ENGINE ===================== */
+const $=s=>document.querySelector(s);
+const stage=$('#stage');let scale=1;
+function fit(){scale=Math.min(innerWidth/1280,innerHeight/720);stage.style.transform=`scale(${scale})`;}addEventListener('resize',fit);fit();
+
+let si=-1, li=-1, playing=true, timer=null, voice=false, layerIdx=0, kbAnim=null, tries=0;
+const album={temple:[],mound:[],mosque:[],fort:[]};
+const done=new Set();
+
+function picHTML(sc){
+  return `<img class="pic" src="img/${sc.img}.jpg" alt="" onerror="this.outerHTML=phHTML('${sc.img}')">`;
+}
+window.phHTML=function(n){const sc=SCENES.find(s=>s.img===n)||{};
+  return `<div class="ph pic" style="--c1:${sc.c1};--c2:${sc.c2}"><div class="n">${n}</div><div class="d">${sc.d||''}</div><div class="h">صورة ${n} — تُستبدل بصورة القصة</div></div>`;};
+
+function showPicture(sc){
+  layerIdx^=1;const L=$('#L'+layerIdx),O=$('#L'+(layerIdx^1));
+  L.innerHTML=picHTML(sc);L.classList.add('on');O.classList.remove('on');
+  const [a,b]=sc.kb||[[1,0,0],[1.08,0,0]];
+  const run=()=>{const el=L.querySelector('.pic');if(!el)return;if(kbAnim)kbAnim.cancel();
+    kbAnim=el.animate([{transform:`scale(${a[0]}) translate(${a[1]}px,${a[2]}px)`},{transform:`scale(${b[0]}) translate(${b[1]}px,${b[2]}px)`}],{duration:16000,easing:'ease-in-out',fill:'forwards'});
+    if(!playing)kbAnim.pause();};
+  requestAnimationFrame(run);setTimeout(run,60);
+}
+
+function hideTexts(all){ $('#bubble').classList.remove('show'); if(all){$('#caption').classList.remove('show');$('#info').classList.remove('show');} }
+
+function typeInto(el,text){el.innerHTML='';el.classList.add('tw');const words=text.split(' ');
+  words.forEach((w,i)=>{const s=document.createElement('span');s.textContent=w+(i<words.length-1?' ':'');el.appendChild(s);setTimeout(()=>s.classList.add('v'),40+i*70);});}
+
+const WHO={dal:['دلّوني','var(--dal)'],bah:['بحّار','var(--bah)'],boy:['الطفل الزائر','var(--boy)'],all:['الجميع','var(--all)']};
+function bubble(name,color,text,pos,fam){
+  const b=$('#bubble');b.classList.remove('show','tr','tl','tc','fam');
+  const P={tr:{right:'60px',left:'auto',top:'120px'},tl:{left:'60px',right:'auto',top:'150px'},tc:{left:'50%',right:'auto',top:'130px'}}[pos||'tr'];
+  Object.assign(b.style,{right:P.right,left:P.left,top:P.top,transform:'',maxWidth:''});
+  if(pos==='tc')b.style.marginLeft='-280px';else b.style.marginLeft='0';
+  b.classList.add(pos||'tr');if(fam)b.classList.add('fam');
+  b.querySelector('.who').textContent=name;b.style.setProperty('--wc',color);b.style.borderColor=fam?color:'#2a1a0c';
+  void b.offsetWidth;b.classList.add('show');typeInto(b.querySelector('.tx'),text);
+}
+
+function readTime(t){return Math.max(2600,900+t.length*68);}
+function speak(t,cb){ if(!voice||!('speechSynthesis' in window)){cb&&cb(false);return;}
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t.replace(/[«»…]/g,' '));u.lang='ar-SA';u.rate=.95;
+    const v=speechSynthesis.getVoices().find(v=>/^ar/i.test(v.lang));if(v)u.voice=v;
+    u.onend=()=>cb&&cb(true);u.onerror=()=>cb&&cb(false);speechSynthesis.speak(u);}catch(e){cb&&cb(false);} }
+
+function schedule(ms,text){clearTimeout(timer);if(!playing)return;
+  if(voice&&text){speak(text,ok=>{ if(playing) timer=setTimeout(advance,ok?700:ms);});}
+  else timer=setTimeout(advance,ms);}
+
+function progress(){const total=SCENES.length;$('#prog div').style.width=((si+ (li+1)/Math.max(1,SCENES[si]?.lines.length||1))/total*100)+'%';}
+
+function goScene(i){
+  clearTimeout(timer);hideTexts(true);hideChoice();$('#badges').innerHTML='';
+  si=i;li=-1;tries=0;const sc=SCENES[i];showPicture(sc);setFx(sc.fx);
+  $('#banner').classList.remove('show');$('#minimap').classList.remove('show');
+  if(sc.station){const s=SITES[sc.site];$('#banner').innerHTML=`المحطة ${sc.station}<small>من 12</small>`;
+    setTimeout(()=>$('#banner').classList.add('show'),300);drawMap(sc.site);setTimeout(()=>$('#minimap').classList.add('show'),500);setTimeout(()=>{if(si===i)$('#minimap').classList.remove('show');},5200);setTimeout(()=>{if(si===i)$('#banner').classList.remove('show');},5200);}
+  if(sc.img==='04')buildBadges();
+  progress();
+  schedule(sc.station?1500:1000);
+}
+
+function advance(){
+  const sc=SCENES[si];li++;progress();
+  if(li>=sc.lines.length){ if(si<SCENES.length-1)goScene(si+1); return; }
+  const L=sc.lines[li];
+  if(L.w==='cap'){ $('#caption').textContent=L.t;$('#caption').classList.remove('show');void $('#caption').offsetWidth;$('#caption').classList.add('show');$('#bubble').classList.remove('show');schedule(readTime(L.t),L.t); }
+  else if(L.w==='info'){ $('#info .txt').textContent=L.t;$('#info').classList.add('show');schedule(readTime(L.t)+800,L.t); }
+  else if(L.w==='site'){ const s=SITES[sc.site]||{};const nm=L.n||s.name||'';bubble(nm,'#8a5a2b',L.t,L.p);schedule(readTime(L.t),L.t); }
+  else if(L.w==='badge'){ const b=document.querySelector(`.badge[data-f="${L.f}"]`);document.querySelectorAll('.badge').forEach(x=>x.classList.remove('hi'));
+    if(b){b.classList.add('on','hi');}bubble('عائلة '+FAM[L.f].name,FAM[L.f].c,L.t,'tr',true);sparkleAt(b);schedule(readTime(L.t),L.t); }
+  else if(L.w==='choice'){ showChoice(sc.site); }
+  else if(L.w==='end'){ setTimeout(()=>openAlbum(true),2200); }
+  else { const [n,c]=WHO[L.w];bubble(n,c,L.t,L.p);schedule(readTime(L.t),L.t); }
+}
+
+/* ----- badges (families intro) ----- */
+function buildBadges(){$('#badges').innerHTML=FAM_ORDER.map(f=>`<div class="badge" data-f="${f}" style="--fc:${FAM[f].c}">${ICON[f]}<div>${FAM[f].name}</div></div>`).join('');}
+
+/* ----- choice ----- */
+function showChoice(k){
+  const s=SITES[k];$('#bubble').classList.remove('show');
+  $('#choice .q').innerHTML=`ساعدوا دلّوني: إلى أيّ عائلة ينتمي <b>«${s.name}»</b>؟`;
+  $('#choice .fams').innerHTML=FAM_ORDER.map(f=>`<button class="famBtn" data-f="${f}" style="--fc:${FAM[f].c}"><div class="ic">${ICON[f]}</div><div class="nm">${FAM[f].name}</div><div class="df">${FAM[f].def}</div></button>`).join('');
+  $('#choice').classList.add('show');
+  document.querySelectorAll('.famBtn').forEach(b=>b.onclick=()=>pick(k,b.dataset.f,b));
+}
+function hideChoice(){$('#choice').classList.remove('show');}
+function pick(k,f,btn){
+  const s=SITES[k];
+  if(f===s.fam){
+    chime(true);hideChoice();
+    if(!done.has(k)){done.add(k);album[f].push(s.name);$('#albumN').textContent=done.size;}
+    sparkleAt(btn,60);
+    const welcome = s.fam==='mosque'
+      ? `أحسنتم! «${s.name}» من عائلة المساجد… فهو أقدم بناء إسلامي في مملكة البحرين.`
+      : `أحسنتم! مرحباً بـ«${s.name}» في عائلة ${FAM[f].name}… فـ${FAM[f].name} ${FAM[f].def}`;
+    bubble('عائلة '+FAM[f].name,FAM[f].c,welcome,'tc',true);
+    $('#info .txt').innerHTML=`<b style="color:${FAM[f].c}">${s.name}</b> ← ${FAM[f].name}: ${FAM[f].def}`;$('#info').classList.add('show');
+    const wasPlaying=playing;playing=true;schedule(readTime(welcome)+600,welcome);if(!wasPlaying){playing=false;clearTimeout(timer);}
+  }else{
+    chime(false);tries++;btn.classList.remove('nope');void btn.offsetWidth;btn.classList.add('nope');
+    const right=FAM[s.fam];
+    let msg=`تمهّل يا صديقي 🙂 ${FAM[f].name} ${FAM[f].def} فهل «${s.name}» كذلك؟ فكّروا مرة أخرى!`;
+    if(tries>=2){msg=`انظروا إلى العائلة المضيئة ✨ عائلة ${right.name}: ${right.def}`;document.querySelector(`.famBtn[data-f="${s.fam}"]`).classList.add('glow');}
+    bubble('بحّار','var(--bah)',msg,'tr');const B=$('#bubble');B.style.top='28px';B.style.maxWidth='760px';speak(msg);
+  }
+}
+
+/* ----- album ----- */
+function renderAlbum(){$('#cols').innerHTML=FAM_ORDER.map(f=>`<div class="col" style="--fc:${FAM[f].c}"><h3>${ICON[f]} ${FAM[f].name}</h3><div class="def">${FAM[f].def}</div><ul>${album[f].length?album[f].map(n=>`<li>${n}</li>`).join(''):'<li class="empty">لم يُضف أحد بعد</li>'}</ul></div>`).join('');}
+function openAlbum(final){renderAlbum();
+  $('#albumTitle').textContent=final?'📒 اكتمل ألبوم العائلات! — النهاية':'📒 ألبوم العائلات';
+  $('#albumRow').innerHTML=final?`<button class="big" id="againBtn" style="font-size:24px;padding:8px 34px">شاهد القصة من جديد ↺</button>`:`<button class="big" id="albumClose" style="font-size:24px;padding:8px 34px">رجوع إلى القصة</button>`;
+  $('#album').classList.remove('hide');
+  if(final){fxConfetti();$('#againBtn').onclick=restart;}else{const was=playing;setPlaying(false);$('#albumClose').onclick=()=>{$('#album').classList.add('hide');if(was)setPlaying(true);};}
+}
+
+/* ----- mini map ----- */
+const ISLAND='M470 170 C520 140 600 135 660 150 C690 165 700 200 690 240 C700 290 690 340 670 390 C650 440 630 480 600 505 C585 480 560 430 545 380 C520 320 470 260 455 210 C452 195 458 180 470 170Z';
+const MUH='M715 135 C745 120 790 125 805 145 C810 170 780 185 750 180 C730 178 712 160 715 135Z';
+function drawMap(k){
+  const pins=SITES.map((s,i)=>{const vis=done.has(i);const cur=i===k;if(!vis&&!cur)return'';
+    const col=vis?FAM[s.fam].c.replace('var(','').replace(')',''):'';const fill=vis?getComputedStyle(document.documentElement).getPropertyValue(col).trim():'#ffd45a';
+    return `<g transform="translate(${s.at[0]},${s.at[1]})">${cur?`<circle r="10" fill="none" stroke="#ffd45a" stroke-width="5"><animate attributeName="r" values="8;30" dur="1.3s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur="1.3s" repeatCount="indefinite"/></circle>`:''}
+      <path d="M0 0 C-5 -10 -16 -16 -16 -30 A16 16 0 0 1 16 -30 C16 -16 5 -10 0 0Z" fill="${fill}" stroke="#fff" stroke-width="4"/></g>`;}).join('');
+  $('#minimap').innerHTML=`<svg viewBox="420 90 420 450"><rect x="400" y="60" width="480" height="520" fill="#2b98c9"/>
+    <g fill="none" stroke="#7fd8ef" stroke-width="30" stroke-linejoin="round"><path d="${ISLAND}"/><path d="${MUH}"/></g>
+    <g fill="#f4dca6" stroke="#fff3d0" stroke-width="5"><path d="${ISLAND}"/><path d="${MUH}"/></g>
+    <text x="590" y="330" text-anchor="middle" font-family="Lalezar,Tajawal" font-size="34" fill="#b38749">البحرين</text>${pins}</svg>`;
+}
+
+/* ----- effects canvas ----- */
+const cv=$('#fx'),cx=cv.getContext('2d');let parts=[],fxMode='',raf=null;
+function setFx(m){fxMode=m;parts=parts.filter(p=>p.burst);if(!raf)loop();}
+function sparkleAt(el,n=26){if(!el)return;const r=el.getBoundingClientRect(),sr=stage.getBoundingClientRect();const x=(r.left+r.width/2-sr.left)/scale,y=(r.top+r.height/2-sr.top)/scale;
+  for(let i=0;i<n;i++)parts.push({burst:1,x,y,vx:(Math.random()-.5)*8,vy:-Math.random()*7-2,g:.25,r:4+Math.random()*6,c:['#ffd45a','#fff','#ff8c42','#7fd8ef'][i%4],life:60,star:1,rot:0});}
+function fxConfetti(){for(let i=0;i<180;i++)parts.push({burst:1,x:Math.random()*1280,y:-Math.random()*400,vx:(Math.random()-.5)*2,vy:2+Math.random()*2,g:.03,r:5+Math.random()*5,c:['#ce1126','#fff','#ffd45a','#2f7fc1','#239b5c'][i%5],life:300,rot:Math.random()*6});}
+function loop(){raf=requestAnimationFrame(loop);cx.clearRect(0,0,1280,720);
+  if(fxMode==='dust'&&parts.length<60)parts.push({x:Math.random()*1280,y:720,vx:(Math.random()-.5)*.3,vy:-.25-Math.random()*.4,g:0,r:1+Math.random()*2.2,c:'rgba(255,240,200,.55)',life:600,dot:1});
+  if(fxMode==='sparkle'&&Math.random()<.15)parts.push({x:Math.random()*1280,y:Math.random()*500,vx:0,vy:0,g:0,r:3+Math.random()*5,c:'#fff7c8',life:50,star:1,tw:1});
+  if(fxMode==='confetti'&&Math.random()<.4)parts.push({x:Math.random()*1280,y:-10,vx:(Math.random()-.5),vy:1.5+Math.random()*1.5,g:.01,r:5+Math.random()*4,c:['#ce1126','#fff','#ffd45a','#2f7fc1','#239b5c'][Math.floor(Math.random()*5)],life:500,rot:Math.random()*6});
+  parts=parts.filter(p=>p.life-->0&&p.y<760);
+  for(const p of parts){p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;cx.save();cx.translate(p.x,p.y);cx.fillStyle=p.c;
+    if(p.tw)cx.globalAlpha=Math.sin(p.life/50*Math.PI);
+    if(p.dot){cx.beginPath();cx.arc(0,0,p.r,0,7);cx.fill();}
+    else if(p.star){cx.beginPath();for(let k=0;k<10;k++){const rr=k%2?p.r*.42:p.r;const a=k*Math.PI/5-Math.PI/2;cx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}cx.fill();}
+    else{p.rot+=.12;cx.rotate(p.rot);cx.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);}cx.restore();}}
+
+/* ----- sound ----- */
+let AC=null;function tone(f,t,d,type='triangle',v=.16){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(0,AC.currentTime+t);g.gain.linearRampToValueAtTime(v,AC.currentTime+t+.02);g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+t+d);o.connect(g).connect(AC.destination);o.start(AC.currentTime+t);o.stop(AC.currentTime+t+d+.05);}catch(e){}}
+function chime(ok){if(ok)[523,659,784,1047].forEach((f,i)=>tone(f,i*.09,.4));else{tone(392,0,.25,'sine',.12);tone(349,.18,.35,'sine',.12);}}
+
+/* ----- controls ----- */
+function setPlaying(p){playing=p;$('#playBtn').textContent=p?'⏸':'▶';
+  if(kbAnim){p?kbAnim.play():kbAnim.pause();}
+  if(!p){clearTimeout(timer);try{speechSynthesis.cancel();}catch(e){}}
+  else if(!$('#choice').classList.contains('show'))schedule(800);}
+$('#playBtn').onclick=()=>setPlaying(!playing);
+$('#nextBtn').onclick=()=>{ if($('#choice').classList.contains('show'))return; clearTimeout(timer);try{speechSynthesis.cancel();}catch(e){} advance(); };
+$('#prevBtn').onclick=()=>{ try{speechSynthesis.cancel();}catch(e){} goScene(Math.max(0, li>1?si:si-1)); };
+$('#voiceBtn').onclick=()=>{voice=!voice;$('#voiceBtn').textContent=(voice?'🔊':'🔇')+' راوٍ';if(!voice)try{speechSynthesis.cancel();}catch(e){}};
+$('#fsBtn').onclick=async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen();}catch(e){}};
+$('#albumBtn').onclick=()=>openAlbum(false);
+const showT=()=>{$('#teacher').classList.remove('hide');};$('#infoBtn').onclick=showT;$('#tInfo').onclick=showT;$('#tClose').onclick=()=>$('#teacher').classList.add('hide');
+function restart(){$('#album').classList.add('hide');done.clear();FAM_ORDER.forEach(f=>album[f]=[]);$('#albumN').textContent=0;setPlaying(true);goScene(0);}
+$('#startBtn').onclick=()=>{tone(660,0,.15);$('#title').classList.add('hide');setPlaying(true);goScene(0);};
+// title background: first picture if available
+(()=>{const im=new Image();im.onload=()=>$('#title').style.setProperty('--tbg',`url(img/19.jpg)`);im.src='img/19.jpg';})();
+setFx('dust');
+stage.addEventListener('scroll',()=>{stage.scrollTop=0;stage.scrollLeft=0;});
+document.querySelectorAll('button').forEach(b=>b.addEventListener('focus',()=>{stage.scrollTop=0;stage.scrollLeft=0;}));
+</script>
+</body>
+</html>

@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>سفينة الآثار</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Tajawal:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sea1:#1f7fb6; --sea2:#3aa5d6; --sand:#efd49a; --sand2:#dcb873; --wood:#8a5a2b; --wood2:#6b4220;
+    --gold:#f4c430; --red:#ce1126; --ink:#3a2412; --green:#2e9e5b;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#0c3a57;overflow:hidden;font-family:"Tajawal","DejaVu Sans",sans-serif;user-select:none;-webkit-user-select:none}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  #stage{position:relative;width:1280px;height:720px;transform-origin:center center;overflow:hidden;border-radius:14px;box-shadow:0 10px 50px rgba(0,0,0,.45)}
+  #world{position:absolute;inset:0;width:100%;height:100%}
+
+  /* ---------- top bar ---------- */
+  #sign{position:absolute;top:14px;right:22px;padding:6px 26px 4px;background:linear-gradient(#a8743d,#7d4f24);border:3px solid #5a3515;border-radius:14px;
+        color:#fff6dc;font-family:"Lalezar","Tajawal",sans-serif;font-size:38px;text-shadow:0 3px 0 #4a2a0f;box-shadow:0 5px 0 #4a2a0f;z-index:5}
+  #stationLbl{position:absolute;top:88px;right:28px;color:#fff;font-weight:800;font-size:20px;background:rgba(10,50,80,.55);padding:4px 16px;border-radius:20px;z-index:5}
+  #hud{position:absolute;top:16px;left:20px;display:flex;gap:10px;z-index:6}
+  .pill{background:rgba(255,255,255,.92);border-radius:30px;padding:6px 16px;font-weight:800;font-size:22px;color:var(--ink);display:flex;align-items:center;gap:6px;box-shadow:0 4px 0 rgba(0,0,0,.2)}
+  .ibtn{width:48px;height:48px;border-radius:50%;border:none;background:rgba(255,255,255,.92);font-size:22px;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.2);font-family:inherit;font-weight:800;color:var(--ink)}
+  .ibtn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.2)}
+
+  /* ---------- lens (spyglass) ---------- */
+  #lensBox{position:absolute;left:62px;top:110px;width:280px;height:280px;z-index:7;opacity:0;transform:scale(.3);transition:opacity .4s, transform .5s cubic-bezier(.3,1.6,.5,1);pointer-events:none}
+  #lensBox.show{opacity:1;transform:scale(1);pointer-events:auto}
+  #lens{position:absolute;inset:0;border-radius:50%;cursor:grab;touch-action:none}
+  #lens.drag{cursor:grabbing}
+  #lensRing{position:absolute;inset:0;border-radius:50%;pointer-events:none;
+        background:radial-gradient(circle closest-side,transparent 0 calc(100% - 22px),#6e4c10 calc(100% - 22px),#f5d77a calc(100% - 17px),#c9952e calc(100% - 10px),#ffe9a3 calc(100% - 6px),#8c6416 calc(100% - 1px),transparent 100%);
+        box-shadow:0 14px 28px rgba(0,0,0,.45)}
+  #lensRing:after{content:"";position:absolute;inset:0;border-radius:50%;
+        background:radial-gradient(circle at 50% 4%,#5a3e0a 4px,transparent 5px),radial-gradient(circle at 50% 96%,#5a3e0a 4px,transparent 5px),radial-gradient(circle at 4% 50%,#5a3e0a 4px,transparent 5px),radial-gradient(circle at 96% 50%,#5a3e0a 4px,transparent 5px)}
+  #lensArt{position:absolute;inset:16px;border-radius:50%;overflow:hidden;background:#bfe4f5}
+  #lensArt svg{width:100%;height:100%;display:block}
+  #lensGlare{position:absolute;inset:16px;border-radius:50%;background:radial-gradient(circle at 30% 25%,rgba(255,255,255,.55),rgba(255,255,255,0) 35%);pointer-events:none}
+  #lensName{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);white-space:nowrap;background:linear-gradient(#e23b4e,#b30d22);color:#fff;font-weight:800;font-size:22px;padding:6px 22px;border-radius:10px;box-shadow:0 4px 0 #7a0816;pointer-events:none}
+  #lensName.found{background:linear-gradient(#3cc073,#23894c);box-shadow:0 4px 0 #145a30}
+  #lensBox.pulse #lensRing{animation:glow 1.4s ease-in-out infinite}
+  @keyframes glow{50%{box-shadow:0 14px 28px rgba(0,0,0,.45),0 0 40px 14px rgba(255,215,90,.85)}}
+  #dragHint{position:absolute;top:-38px;left:50%;transform:translateX(-50%);white-space:nowrap;color:#fff;font-weight:800;font-size:18px;text-shadow:0 2px 3px rgba(0,0,0,.6);animation:bob 1.2s ease-in-out infinite;pointer-events:none}
+  @keyframes bob{50%{transform:translate(-50%,-6px)}}
+
+  /* ---------- clue scroll ---------- */
+  #scroll{position:absolute;left:40px;top:425px;width:325px;min-height:92px;z-index:6;padding:14px 22px;background:radial-gradient(ellipse at 50% 40%,#fff8e3,#f4e0b0 80%,#e6c88a);border:3px solid #b8904c;border-radius:12px;
+          color:var(--ink);font-size:21px;font-weight:700;line-height:1.5;box-shadow:0 6px 0 #b48a45;opacity:0;transform:translateY(20px);transition:.4s}
+  #scroll.show{opacity:1;transform:none}
+  #scroll b{color:#b30d22}
+  #scroll:before,#scroll:after{content:"";position:absolute;top:-8px;bottom:-8px;width:14px;background:linear-gradient(90deg,#c9a15c,#f3dca5,#c9a15c);border-radius:8px}
+  #scroll:before{right:-9px} #scroll:after{left:-9px}
+
+  /* ---------- deck & chests ---------- */
+  #deck{position:absolute;left:0;right:0;bottom:0;height:180px;z-index:4;
+        background:
+          radial-gradient(circle at 12px 18px,#3a2210 2.2px,transparent 3px) 0 0/160px 180px,
+          radial-gradient(circle at 12px 160px,#3a2210 2.2px,transparent 3px) 0 0/160px 180px,
+          repeating-linear-gradient(90deg,transparent 0 156px,#4a2a0f 156px 160px),
+          repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 3px,rgba(0,0,0,.05) 3px 9px),
+          linear-gradient(180deg,#b57a42 0%,#94602f 45%,#6e4320 100%);
+        border-top:10px solid #5a3515;box-shadow:0 -6px 20px rgba(0,0,0,.35)}
+  #deck:before{content:"";position:absolute;left:0;right:0;top:-40px;height:30px;
+        background:repeating-linear-gradient(90deg,transparent 0 46px,#6b4220 46px 49px,#8a5a2b 49px 53px,#5a3515 53px 56px);pointer-events:none}
+  #deck:after{content:"";position:absolute;left:0;right:0;top:-48px;height:10px;border-radius:6px;pointer-events:none;
+        background:repeating-linear-gradient(115deg,#d9b26a 0 6px,#a77c3a 6px 9px,#e8c987 9px 12px);box-shadow:0 3px 4px rgba(0,0,0,.35)}
+  .chest{position:absolute;bottom:22px;width:190px;height:150px;z-index:8;cursor:pointer}
+  .chest svg{width:190px;height:130px;display:block;overflow:visible}
+  .chest .lid{transform-origin:95px 52px;transition:transform .35s cubic-bezier(.3,1.6,.5,1)}
+  .chest.open .lid{transform:rotate(-24deg) translate(-6px,-14px)}
+  .chest .plaque{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);background:#fff6dc;border:3px solid #5a3515;border-radius:12px;padding:2px 18px;font-weight:800;font-size:24px;color:var(--ink);white-space:nowrap}
+  .chest .cnt{position:absolute;top:8px;left:6px;width:38px;height:38px;border-radius:50%;background:var(--gold);border:3px solid #8c6416;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center;color:var(--ink)}
+  .chest.hot{filter:drop-shadow(0 0 14px #ffe27a) drop-shadow(0 0 6px #ffe27a)}
+  .chest.ok{animation:okPop .6s}
+  @keyframes okPop{40%{transform:scale(1.12)}}
+  .chest.bad{animation:shake .5s}
+  .chest.bad svg{filter:drop-shadow(0 0 10px #ff4d4d)}
+  @keyframes shake{20%{transform:translateX(-10px) rotate(-3deg)}40%{transform:translateX(10px) rotate(3deg)}60%{transform:translateX(-7px)}80%{transform:translateX(7px)}}
+
+  /* ---------- captain ---------- */
+  #captain{position:absolute;right:10px;bottom:0;width:200px;height:260px;z-index:9;pointer-events:none}
+  #captain .mouth-open{opacity:0}
+  #captain.talk .mouth-open{animation:talk .22s steps(2) infinite}
+  @keyframes talk{0%{opacity:0}50%{opacity:1}}
+  #bubble{position:absolute;right:205px;bottom:188px;width:330px;z-index:9;background:#fff;border-radius:22px;padding:14px 20px;font-size:21px;font-weight:700;line-height:1.5;color:var(--ink);
+          box-shadow:0 6px 0 rgba(0,0,0,.18);border:3px solid #2b5b7a;opacity:0;transform:scale(.8);transform-origin:right bottom;transition:.25s}
+  #bubble.show{opacity:1;transform:none}
+  #bubble:after{content:"";position:absolute;right:-22px;bottom:26px;border:12px solid transparent;border-left:22px solid #fff;filter:drop-shadow(3px 0 0 #2b5b7a)}
+  #bubble .who{display:block;font-size:15px;color:#2b5b7a;font-weight:800}
+
+  /* ---------- rising building on map ---------- */
+  #rise{position:absolute;width:110px;height:84px;z-index:3;pointer-events:none;opacity:0;transform:translate(-50%,-100%) scale(.1);transition:opacity .3s, transform .7s cubic-bezier(.3,1.7,.5,1)}
+  #rise.show{opacity:1;transform:translate(-50%,-100%) scale(1)}
+  #rise svg{width:100%;height:100%;border-radius:12px;border:3px solid #fff;box-shadow:0 6px 12px rgba(0,0,0,.4)}
+
+  /* ---------- overlays ---------- */
+  .overlay{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s}
+  .overlay.hide{opacity:0;pointer-events:none}
+  #intro{background:radial-gradient(ellipse at 50% 30%,rgba(255,236,190,.97),rgba(255,214,140,.95) 45%,rgba(40,140,200,.96) 75%)}
+  .bigTitle{font-family:"Lalezar","Tajawal",sans-serif;font-size:116px;line-height:1;margin:0;color:#8a4512;background:linear-gradient(#a8561a,#6b2f0b);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 5px 0 #f4c430) drop-shadow(0 10px 14px rgba(0,0,0,.25))}
+  .sub{font-size:30px;font-weight:800;color:#5a3515;margin:10px 0 6px}
+  .steps{display:flex;gap:22px;margin:16px 0 24px}
+  .step{background:rgba(255,255,255,.9);border-radius:20px;padding:12px 18px;width:250px;text-align:center;font-weight:700;font-size:20px;color:var(--ink);box-shadow:0 6px 0 rgba(0,0,0,.15)}
+  .step .n{display:inline-flex;width:40px;height:40px;border-radius:50%;background:#2b8fc7;color:#fff;align-items:center;justify-content:center;font-weight:800;font-size:22px;margin-bottom:6px}
+  .bigBtn{font-family:inherit;font-weight:800;font-size:34px;padding:12px 46px;border:none;border-radius:40px;cursor:pointer;color:#fff;background:linear-gradient(#ff7a3d,#e0481b);box-shadow:0 8px 0 #9c2e0c, 0 14px 20px rgba(0,0,0,.25)}
+  .bigBtn:active{transform:translateY(6px);box-shadow:0 2px 0 #9c2e0c}
+  .linkBtn{margin-top:16px;background:none;border:none;font-family:inherit;font-weight:800;font-size:20px;color:#fff;text-decoration:underline;cursor:pointer;text-shadow:0 2px 3px rgba(0,0,0,.4)}
+  #introShip{width:250px;filter:drop-shadow(0 10px 10px rgba(0,0,0,.2));animation:rock 2.6s ease-in-out infinite}
+  @keyframes rock{50%{transform:rotate(-4deg) translateY(-6px)}}
+
+  #end{background:radial-gradient(ellipse at 50% 20%,rgba(255,246,210,.97),rgba(255,220,150,.96) 55%,rgba(30,120,180,.95))}
+  #end h2{font-family:"Lalezar","Tajawal",sans-serif;font-size:66px;margin:0;color:#7a3f12;text-shadow:0 4px 0 #f4c430}
+  .stars{font-size:46px;letter-spacing:4px;margin:6px 0 10px}
+  .results{display:flex;gap:20px;margin:4px 0 18px}
+  .rcol{width:320px;background:#fff8e4;border:4px solid #8a5a2b;border-radius:18px;overflow:hidden;box-shadow:0 6px 0 #5a3515}
+  .rcol h3{margin:0;padding:8px;background:linear-gradient(#a8743d,#7d4f24);color:#fff6dc;font-size:26px;display:flex;align-items:center;justify-content:center;gap:8px}
+  .rcol h3 svg{width:40px;height:34px}
+  .rcol ul{list-style:none;margin:0;padding:10px 16px;font-size:21px;font-weight:700;color:var(--ink);min-height:110px}
+  .rcol li{padding:4px 0;border-bottom:2px dashed #e3cf9f}
+  .rcol li:last-child{border:none}
+  .cert{font-size:26px;font-weight:800;color:#fff;background:linear-gradient(#2e9e5b,#1d7342);padding:8px 30px;border-radius:14px;margin-bottom:16px;box-shadow:0 5px 0 #11502c}
+
+  #info{background:rgba(5,30,50,.75);z-index:25}
+  .card{width:820px;background:#fffaf0;border-radius:22px;padding:24px 34px;color:var(--ink);font-size:20px;line-height:1.65;box-shadow:0 12px 40px rgba(0,0,0,.4);border:4px solid #c9952e}
+  .card h3{margin:0 0 8px;font-size:30px;color:#7a3f12}
+  .card table{width:100%;border-collapse:collapse;margin:8px 0}
+  .card td{border:2px solid #e2cfa0;padding:6px 12px;vertical-align:top}
+  .card td:first-child{width:190px;font-weight:800;background:#fbefcf}
+
+  #confetti{position:absolute;left:0;top:0;width:1280px;height:720px;pointer-events:none;z-index:30}
+  .glint{transform-box:fill-box;transform-origin:center;opacity:0;animation:tw 3s ease-in-out infinite}
+  @keyframes tw{0%,100%{opacity:0;transform:scale(.3)}50%{opacity:.85;transform:scale(1)}}
+  .foam use{animation:foam 6s linear infinite}
+  @keyframes foam{to{stroke-dashoffset:-48}}
+  .flag{transform-box:fill-box;transform-origin:left center;animation:flag 1.1s ease-in-out infinite}
+  @keyframes flag{50%{transform:skewY(-6deg) scaleX(.92)}}
+  .wake{animation:wake 1.2s ease-in-out infinite}
+  @keyframes wake{50%{opacity:.35}}
+  .chest .rays{opacity:0;transform-origin:95px 60px;transform:scale(.4);transition:.35s}
+  .chest.open .rays{opacity:1;transform:scale(1)}
+  #fly{position:absolute;z-index:12;pointer-events:none;border-radius:50%;overflow:hidden;border:6px solid #c9952e}
+  #fly svg{width:100%;height:100%;display:block}
+  .noSel{pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+
+<svg id="world" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="seaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2aa0d6"/><stop offset="1" stop-color="#16689c"/></linearGradient>
+    <radialGradient id="shallow" cx="50%" cy="50%" r="50%"><stop offset=".6" stop-color="#7fd3ea" stop-opacity=".9"/><stop offset="1" stop-color="#7fd3ea" stop-opacity="0"/></radialGradient>
+    <linearGradient id="landG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dfa8"/><stop offset="1" stop-color="#e2bf7c"/></linearGradient>
+    <pattern id="wavesP" width="90" height="46" patternUnits="userSpaceOnUse">
+      <path d="M5 14 q10 -8 20 0 t20 0" fill="none" stroke="#ffffff" stroke-opacity=".35" stroke-width="3" stroke-linecap="round"/>
+      <path d="M50 37 q10 -8 20 0 t20 0" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="3" stroke-linecap="round"/>
+    </pattern>
+  </defs>
+  <rect width="1280" height="720" fill="url(#seaG)"/>
+  <radialGradient id="seaLight" cx=".45" cy=".4" r=".7"><stop offset="0" stop-color="#7fd6f5" stop-opacity=".45"/><stop offset="1" stop-color="#0a3d62" stop-opacity=".35"/></radialGradient>
+  <rect width="1280" height="720" fill="url(#seaLight)"/>
+  <g id="wavesLayer"><rect x="-90" y="0" width="1460" height="720" fill="url(#wavesP)"/></g>
+  <g id="glints" fill="#fff"><path class="glint" style="animation-delay:0.00s" d="M120 300 l3 -9 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3z" transform="translate(0,0)"/><path class="glint" style="animation-delay:0.37s" d="M330 90 l3 -9 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3z" transform="translate(0,0)"/><path class="glint" style="animation-delay:0.74s" d="M980 140 l3 -9 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3z" transform="translate(0,0)"/><path class="glint" style="animation-delay:1.11s" d="M1100 470 l3 -9 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3z" transform="translate(0,0)"/><path class="glint" style="animation-delay:1.48s" d="M860 330 l3 -9 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3z" transform="translate(0,0)"/><path class="glint" style="animation-delay:1.85s" d="M260 520 l3 -9 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3z" transform="translate(0,0)"/><path class="glint" style="animation-delay:2.22s" d="M1210 280 l3 -9 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3z" transform="translate(0,0)"/><path class="glint" style="animation-delay:2.59s" d="M420 40 l3 -9 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3z" transform="translate(0,0)"/><path class="glint" style="animation-delay:2.96s" d="M900 40 l3 -9 l3 9 l9 3 l-9 3 l-3 9 l-3 -9 l-9 -3z" transform="translate(0,0)"/></g>
+
+  <!-- compass rose -->
+  <g transform="translate(1180,200)" opacity=".85">
+    <circle r="44" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="3"/>
+    <path d="M0 -50 L9 0 L0 50 L-9 0Z" fill="#fff6dc"/><path d="M0 -50 L9 0 L-9 0Z" fill="#ce1126"/>
+    <path d="M-50 0 L0 -9 L50 0 L0 9Z" fill="#fff6dc" opacity=".8"/>
+    <text y="-58" text-anchor="middle" fill="#fff" font-size="20" font-weight="800" font-family="Tajawal">ش</text>
+  </g>
+  <text x="250" y="640" fill="#fff" fill-opacity=".0" font-size="1">.</text>
+
+  <!-- MAP (shared transform) -->
+  <g id="map" transform="translate(-30,-50) scale(1.05)">
+    <defs>
+      <path id="pMain" d="M470 170 C520 140 600 135 660 150 C690 165 700 200 690 240 C700 290 690 340 670 390 C650 440 630 480 600 505 C585 480 560 430 545 380 C520 320 470 260 455 210 C452 195 458 180 470 170Z"/>
+      <path id="pMuh" d="M715 135 C745 120 790 125 805 145 C810 170 780 185 750 180 C730 178 712 160 715 135Z"/>
+      <path id="pSit" d="M705 270 C718 262 728 272 724 292 C720 306 708 304 704 292Z"/>
+      <g id="palmS"><path d="M0 0 Q-1 -6 1 -11" stroke="#7a4f27" stroke-width="2" fill="none"/><g fill="#3f9a4a"><path d="M1 -11 q-6 -3 -10 2 q5 -2 10 -2z"/><path d="M1 -11 q6 -3 10 2 q-5 -2 -10 -2z"/><path d="M1 -11 q-3 -6 -8 -6 q5 1 8 6z"/><path d="M1 -11 q3 -6 8 -6 q-5 1 -8 6z"/></g></g>
+      <g id="house"><rect x="-6" y="-6" width="12" height="9" fill="#fbf3e2" stroke="#b89363" stroke-width="1"/><rect x="-6" y="-8" width="12" height="2.5" fill="#e6d3ae"/><rect x="-2" y="-2" width="3" height="5" fill="#8a5a2b"/></g>
+      <filter id="fLand"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="3" seed="4" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 .55  0 0 0 0 .38  0 0 0 0 .15  0 0 0 .55 -.12" result="c"/><feComposite in="c" in2="SourceGraphic" operator="in" result="t"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="t"/></feMerge></filter>
+      <radialGradient id="gLand" cx=".45" cy=".3" r=".8"><stop offset="0" stop-color="#f8e3b0"/><stop offset=".7" stop-color="#ecd096"/><stop offset="1" stop-color="#d9b674"/></radialGradient>
+      <linearGradient id="gPier" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b47a40"/><stop offset="1" stop-color="#6e4120"/></linearGradient>
+    </defs>
+    <!-- shallow water rings & foam -->
+    <g fill="none" stroke-linejoin="round">
+      <g stroke="#58c4e6" stroke-opacity=".45" stroke-width="70"><use href="#pMain"/><use href="#pMuh"/><use href="#pSit"/></g>
+      <g stroke="#7fd8ef" stroke-opacity=".7" stroke-width="40"><use href="#pMain"/><use href="#pMuh"/><use href="#pSit"/></g>
+      <g stroke="#b5ecf7" stroke-width="18"><use href="#pMain"/><use href="#pMuh"/><use href="#pSit"/></g>
+      <g class="foam" stroke="#ffffff" stroke-width="5" stroke-dasharray="14 10" stroke-linecap="round" opacity=".85"><use href="#pMain"/><use href="#pMuh"/><use href="#pSit"/></g>
+    </g>
+    <!-- land -->
+    <g filter="url(#fLand)"><use href="#pMain" fill="url(#gLand)"/><use href="#pMuh" fill="url(#gLand)"/><use href="#pSit" fill="url(#gLand)"/></g>
+    <g fill="none" stroke="#fff1c9" stroke-width="5"><use href="#pMain"/><use href="#pMuh"/><use href="#pSit"/></g>
+    <!-- greenery (north) -->
+    <g fill="#9cc96b" opacity=".55"><ellipse cx="565" cy="182" rx="38" ry="16"/><ellipse cx="510" cy="208" rx="22" ry="12"/><ellipse cx="628" cy="200" rx="22" ry="12"/></g>
+    <g><use href="#palmS" x="548" y="178"/><use href="#palmS" x="560" y="186"/><use href="#palmS" x="572" y="176"/><use href="#palmS" x="585" y="190"/><use href="#palmS" x="505" y="204"/><use href="#palmS" x="518" y="212"/><use href="#palmS" x="612" y="196"/><use href="#palmS" x="628" y="206"/><use href="#palmS" x="642" y="214"/><use href="#palmS" x="540" y="226"/><use href="#palmS" x="600" y="232"/><use href="#palmS" x="470" y="190"/><use href="#palmS" x="760" y="150"/><use href="#palmS" x="780" y="160"/></g>
+    <!-- towns -->
+    <g><use href="#house" x="655" y="178"/><use href="#house" x="668" y="190"/><use href="#house" x="675" y="206"/><use href="#house" x="662" y="214"/><use href="#house" x="780" y="140"/><use href="#house" x="795" y="152"/><use href="#house" x="640" y="330"/><use href="#house" x="655" y="342"/><use href="#house" x="625" y="252"/><use href="#house" x="570" y="262"/></g>
+    <!-- dunes south -->
+    <g fill="none" stroke="#c99c55" stroke-width="2.5" opacity=".55" stroke-linecap="round"><path d="M580 390 q10 -6 20 0"/><path d="M600 420 q10 -6 20 0"/><path d="M585 450 q8 -5 16 0"/><path d="M620 370 q8 -5 16 0"/></g>
+    <text x="592" y="322" text-anchor="middle" font-family="Lalezar,Tajawal" font-size="30" fill="#a5793a" opacity=".7">البحرين</text>
+    <text x="772" y="110" text-anchor="middle" font-family="Tajawal" font-weight="800" font-size="16" fill="#fff" style="paint-order:stroke" stroke="#1a6d9c" stroke-width="4">المحرّق</text>
+
+    <!-- port -->
+    <g id="port" transform="translate(905,248)" filter="url(#fDrop)">
+      <g fill="#5a3515"><rect x="2" y="4" width="6" height="20" rx="2"/><rect x="34" y="4" width="6" height="20" rx="2"/><rect x="66" y="4" width="6" height="20" rx="2"/></g>
+      <rect x="-6" y="-8" width="92" height="16" rx="4" fill="url(#gPier)" stroke="#4a2a0f" stroke-width="2"/>
+      <g stroke="#4a2a0f" stroke-width="1" opacity=".5"><path d="M12 -8 v16 M30 -8 v16 M48 -8 v16 M66 -8 v16"/></g>
+      <g transform="translate(78,-8)"><rect x="-1.5" y="-30" width="3" height="30" fill="#5a3515"/><rect x="1.5" y="-29" width="20" height="12" fill="#ce1126"/><path d="M1.5 -29 H6 L9 -27.8 L6 -26.6 L9 -25.4 L6 -24.2 L9 -23 L6 -21.8 L9 -20.6 L6 -19.4 L9 -18.2 L6 -17 H1.5Z" fill="#fff"/></g>
+      <text x="36" y="-18" text-anchor="middle" font-family="Tajawal" font-weight="800" font-size="17" fill="#fff" style="paint-order:stroke" stroke="#1a6d9c" stroke-width="4">الميناء</text>
+    </g>
+
+    <polyline id="trail" points="" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="2 12" stroke-linecap="round" opacity=".9"/>
+
+    <!-- ship -->
+    <g id="ship" transform="translate(1010,330)">
+      <g id="shipFlip"><g id="shipBob"></g></g>
+    </g>
+    <g id="markers"></g>
+  </g>
+
+  <text x="215" y="602" fill="none">.</text>
+  <text id="gulfLbl" x="1120" y="318" text-anchor="middle" font-family="Lalezar,Tajawal" font-size="30" fill="#fff" fill-opacity=".45">الخليج العربي</text>
+  <!-- gulls -->
+  <g fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".85">
+    <path class="gull" d="M0 0 q8 -9 16 0 q8 -9 16 0" transform="translate(300,90)"/>
+    <path class="gull g2" d="M0 0 q6 -7 12 0 q6 -7 12 0" transform="translate(340,120)"/>
+    <path class="gull g3" d="M0 0 q7 -8 14 0 q7 -8 14 0" transform="translate(900,120)"/>
+  </g>
+</svg>
+
+<div id="sign">سفينة الآثار</div>
+<div id="stationLbl">المحطة 1 من 7</div>
+<div id="hud">
+  <div class="pill">⭐ <span id="starCount">0</span></div>
+  <button class="ibtn" id="soundBtn" title="الصوت">🔊</button>
+  <button class="ibtn" id="fsBtn" title="ملء الشاشة">⛶</button>
+  <button class="ibtn" id="infoBtn" title="للمعلم">ℹ</button>
+</div>
+
+<div id="rise"></div>
+
+<div id="lensBox">
+  <div id="dragHint">اسحبني إلى الصندوق الصحيح ⬇</div>
+  <div id="lens"><div id="lensArt"></div><div id="lensGlare"></div><div id="lensRing"></div></div>
+  <div id="lensName">أثر غامض ❓</div>
+</div>
+<div id="scroll"></div>
+
+<div id="deck"></div>
+<div class="chest" data-cat="fort"   style="left:810px"></div>
+<div class="chest" data-cat="temple" style="left:580px"></div>
+<div class="chest" data-cat="mound"  style="left:350px"></div>
+
+<div id="bubble"><span class="who">النوخذة</span><span id="bubbleTxt"></span></div>
+<div id="captain"></div>
+
+<!-- intro -->
+<div class="overlay" id="intro">
+  <svg id="introShip" viewBox="-30 0 170 110"></svg>
+  <h1 class="bigTitle">سفينة الآثار</h1>
+  <div class="sub">رحلة حول جزيرة البحرين لاكتشاف آثار بلادي</div>
+  <div class="steps">
+    <div class="step"><div class="n">1</div><br>تُبحر السفينة إلى موقع أثري جديد</div>
+    <div class="step"><div class="n">2</div><br>انظر في المنظار واقرأ ما يقوله الأثر</div>
+    <div class="step"><div class="n">3</div><br>اسحب الأثر إلى صندوقه: قلاع، معابد، مدافن</div>
+  </div>
+  <button class="bigBtn" id="startBtn">ابدأ الرحلة ⛵</button>
+  <button class="linkBtn" id="introInfo">معلومات الوسيلة (للمعلم)</button>
+</div>
+
+<!-- end -->
+<div class="overlay hide" id="end">
+  <h2>وصلت سفينة الآثار بسلام!</h2>
+  <div class="stars" id="endStars"></div>
+  <div class="cert" id="cert">🏅 شهادة: قبطان الآثار الماهر</div>
+  <div class="results" id="results"></div>
+  <button class="bigBtn" id="againBtn">رحلة جديدة ⛵</button>
+  <button class="linkBtn" id="endInfo" style="color:#5a3515;text-shadow:none">معلومات الوسيلة (للمعلم)</button>
+</div>
+
+<!-- teacher info -->
+<div class="overlay hide" id="info">
+  <div class="card">
+    <h3>معلومات الوسيلة</h3>
+    <table>
+      <tr><td>اسم الوسيلة</td><td>لعبة إلكترونية: سفينة الآثار</td></tr>
+      <tr><td>الكتاب / الصف</td><td>التربية للمواطنة – الصف الثالث الابتدائي</td></tr>
+      <tr><td>عنوان الدرس</td><td>آثار بلادي</td></tr>
+      <tr><td>الهدف السلوكي</td><td>أن يصنّف التلميذ المواقع الأثرية المعطاة له في مملكة البحرين إلى قلاع، ومعابد، ومدافن.</td></tr>
+      <tr><td>مستوى الهدف</td><td>معرفي – التحليل</td></tr>
+      <tr><td>طريقة التدريس</td><td>الألعاب التعليمية</td></tr>
+      <tr><td>التقويم المصاحب</td><td>صنّف المواقع الأثرية المعطاة لك إلى قلاع، ومعابد، ومدافن.</td></tr>
+    </table>
+    <div style="text-align:center;margin-top:10px"><button class="bigBtn" id="closeInfo" style="font-size:24px;padding:8px 34px">رجوع</button></div>
+  </div>
+</div>
+
+<canvas id="confetti" width="2560" height="1440"></canvas>
+</div></div>
+
+<script>
+/* ================= DATA ================= */
+const CATS = {
+  fort:  {name:'قلاع',  one:'قلعة'},
+  temple:{name:'معابد', one:'معبد'},
+  mound: {name:'مدافن', one:'مدافن'}
+};
+const SITES = [
+  {name:'قلعة بوماهر', cat:'fort', art:'fortC', land:[748,168], dock:[872,186], via:[[930,250]],
+   clue:'أقف على شاطئ المحرّق، وبُنيتُ لأحمي البلاد من جهة البحر.'},
+  {name:'قلعة البحرين', cat:'fort', art:'fortA', land:[595,160], dock:[600,130], via:[[706,206],[694,130]],
+   clue:'أنا مبنى عسكري كبير فوق تلٍّ قرب البحر، لي أسوار وأبراج.'},
+  {name:'معبد باربار', cat:'temple', art:'templeA', land:[532,170], dock:[518,134], via:[],
+   clue:'أنا مكان عبادة قديم، فيّ درجات من الحجارة وبئر ماء.'},
+  {name:'معبد الدراز', cat:'temple', art:'templeB', land:[492,195], dock:[418,172], via:[[456,132]],
+   clue:'أنا مكان عبادة قديم، بقيت مني قواعد أعمدة من الحجر.'},
+  {name:'مدافن سار', cat:'mound', art:'moundsB', land:[520,255], dock:[410,262], via:[],
+   clue:'أنا قبور كثيرة متلاصقة، شكلي يشبه خلية النحل.'},
+  {name:'مدافن عالي', cat:'mound', art:'moundsA', land:[585,290], dock:[452,350], via:[],
+   clue:'أنا تلال كبيرة من التراب، تحتي قبور القدماء.'},
+  {name:'قلعة الشيخ سلمان بن أحمد', cat:'fort', art:'fortB', land:[632,345], dock:[762,352], via:[[508,425],[598,524],[700,452]],
+   clue:'بُنيتُ للدفاع عن البلاد، ولي أسوار عالية، وأطلّ على وادي الحنينية.'},
+];
+const PORT = {dock:[892,258], via:[[770,300]]};
+const START = [1010,330];
+const HINTS = {
+  fort:'انظر جيداً: هل ترى أسواراً وأبراجاً؟ القلاع مبانٍ عسكرية بُنيت للدفاع عن البلاد.',
+  temple:'هذا ليس مبنى للدفاع ولا قبراً… إنه مكان عبادة قديم. أين نضع المعابد؟',
+  mound:'هذه قبور القدماء! المدافن قبور بأشكال وأحجام مختلفة.'
+};
+const PRAISE = ['أحسنت يا بطل! 🌟','ممتاز! تصنيف صحيح 👏','رائع! أنت عالِم آثار ماهر','صحيح! هيا نكمل الرحلة ⛵'];
+
+/* ================= ART (v2: shaded, layered) ================= */
+const SK = '#8a6638'; // outline stroke
+function sky(){
+  return `<rect width="240" height="180" fill="url(#gSky)"/>
+  <circle cx="196" cy="36" r="34" fill="url(#gSunGlow)"/><circle cx="196" cy="36" r="14" fill="#fff3b0"/>
+  <g fill="#fff" opacity=".92"><ellipse cx="46" cy="34" rx="22" ry="8"/><ellipse cx="60" cy="29" rx="14" ry="9"/><ellipse cx="34" cy="31" rx="10" ry="6"/></g>
+  <g fill="#fff" opacity=".7"><ellipse cx="132" cy="22" rx="16" ry="5"/><ellipse cx="142" cy="19" rx="9" ry="6"/></g>
+  <g fill="none" stroke="#4a5a6a" stroke-width="1.6" stroke-linecap="round" opacity=".6"><path d="M150 46 q4 -4 8 0 q4 -4 8 0"/><path d="M168 56 q3 -3 6 0 q3 -3 6 0"/></g>`;
+}
+function ground(y,fill='url(#gSand)'){return `<rect y="${y}" width="240" height="${180-y}" fill="${fill}"/><rect y="${y}" width="240" height="3" fill="#fff" opacity=".25"/>`;}
+/* pseudo-3D block: lit front, shaded side, light top */
+function box(x,y,w,h,d=14,front='url(#gWallF)',side='url(#gWallS)',top='#f7e6bf'){
+  const dy=d*.55;
+  return `<path d="M${x} ${y} L${x+d} ${y-dy} L${x+w+d} ${y-dy} L${x+w} ${y}Z" fill="${top}" stroke="${SK}" stroke-width="1.4" stroke-linejoin="round"/>
+  <path d="M${x+w} ${y} L${x+w+d} ${y-dy} L${x+w+d} ${y+h-dy} L${x+w} ${y+h}Z" fill="${side}" stroke="${SK}" stroke-width="1.4" stroke-linejoin="round"/>
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${front}" stroke="${SK}" stroke-width="1.6"/>
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#pCourse)"/>`;
+}
+function crenF(x,y,w,step=11,h=7){let s='';for(let i=x+1;i<x+w-3;i+=step)s+=`<rect x="${i}" y="${y-h}" width="${step*.55}" height="${h}" fill="url(#gWallF)" stroke="${SK}" stroke-width="1.2"/>`;return s;}
+function cyl(cx,top,bottom,r){
+  return `<rect x="${cx-r}" y="${top}" width="${2*r}" height="${bottom-top}" fill="url(#gCyl)" stroke="${SK}" stroke-width="1.6"/>
+  <rect x="${cx-r}" y="${top}" width="${2*r}" height="${bottom-top}" fill="url(#pCourse)"/>
+  <ellipse cx="${cx}" cy="${bottom}" rx="${r}" ry="${r*.28}" fill="url(#gCyl)" stroke="${SK}" stroke-width="1.6"/>
+  <rect x="${cx-r+1}" y="${bottom-4}" width="${2*r-2}" height="4" fill="url(#gCyl)"/>
+  <ellipse cx="${cx}" cy="${top}" rx="${r}" ry="${r*.28}" fill="#f5e2b6" stroke="${SK}" stroke-width="1.4"/>
+  ${(()=>{let s='';const n=Math.max(3,Math.round(r/4));for(let k=0;k<n;k++){const x=cx-r+1+k*(2*r/n);s+=`<rect x="${x.toFixed(1)}" y="${top-7}" width="${(r/n).toFixed(1)}" height="7" fill="url(#gCyl)" stroke="${SK}" stroke-width="1"/>`;}return s;})()}`;
+}
+function win(x,y,w=7,h=12){return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${w/2}" fill="#3b2412"/><rect x="${x-1}" y="${y+h}" width="${w+2}" height="2" fill="#f7e6bf"/>`;}
+function door(x,y,w,h){return `<path d="M${x} ${y+h} v-${h-w/2} a${w/2} ${w/2} 0 0 1 ${w} 0 v${h-w/2}z" fill="url(#gDoor)" stroke="#4a2a0f" stroke-width="1.6"/>
+  <g fill="#e8b84a">${[0.3,0.55,0.8].map(f=>`<circle cx="${x+w*.3}" cy="${y+h*f}" r="1.2"/><circle cx="${x+w*.7}" cy="${y+h*f}" r="1.2"/>`).join('')}</g>`;}
+function palm(x,y,s=1){return `<g transform="translate(${x},${y}) scale(${s})">
+  <path d="M0 0 Q-4 -30 4 -62" stroke="#7a4f27" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M0 0 Q-4 -30 4 -62" stroke="#a8743d" stroke-width="7" stroke-dasharray="2 5" fill="none"/>
+  <g transform="translate(4,-62)">
+   <path d="M0 0 q-24 -12 -40 8 q18 -6 40 -8z" fill="url(#gLeaf)"/><path d="M0 0 q24 -12 40 8 q-18 -6 -40 -8z" fill="url(#gLeaf)"/>
+   <path d="M0 0 q-14 -22 -34 -20 q18 4 34 20z" fill="url(#gLeaf)"/><path d="M0 0 q14 -22 34 -20 q-18 4 -34 20z" fill="url(#gLeaf)"/>
+   <path d="M0 0 q-2 -20 6 -30 q-2 14 -6 30z" fill="url(#gLeaf)"/>
+   <g fill="#c2711f"><circle cx="-3" cy="4" r="3"/><circle cx="3" cy="5" r="3"/></g></g></g>`;}
+function shadow(cx,cy,rx,ry,o=.22){return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#5a3a1c" opacity="${o}"/>`;}
+function waterBand(y){return `<rect y="${y}" width="240" height="${180-y}" fill="url(#gWater)"/>
+  <g stroke="#fff" stroke-linecap="round" fill="none" opacity=".75" stroke-width="2"><path d="M14 ${y+12} q8 -5 16 0 t16 0"/><path d="M120 ${y+20} q8 -5 16 0 t16 0"/><path d="M190 ${y+10} q6 -4 12 0"/><path d="M70 ${y+26} q8 -5 16 0"/></g>`;}
+
+const ART = {
+  /* Qal'at al-Bahrain: fort on an artificial mound by the sea */
+  fortA:()=>`<svg viewBox="0 0 240 180">${sky()}
+    <rect y="120" width="240" height="60" fill="url(#gWater)"/>
+    <path d="M-5 172 Q40 112 118 102 Q196 108 245 168 L245 180 L-5 180Z" fill="url(#gMound)" stroke="${SK}" stroke-width="1.5"/>
+    <path d="M30 160 Q80 122 140 116" stroke="#f6dfab" stroke-width="3" fill="none" opacity=".7"/>
+    <path d="M118 104 Q126 130 112 176" stroke="#c49559" stroke-width="5" fill="none" opacity=".5"/>
+    ${shadow(124,112,78,7)}
+    ${cyl(84,56,84,9)}${cyl(178,56,84,9)}
+    ${box(62,72,116,40,16)}${crenF(62,72,116)}
+    ${cyl(60,52,114,13)}${cyl(180,52,114,13)}
+    ${door(110,88,20,24)}${win(84,82)}${win(150,82)}
+    <g stroke="#fff" opacity=".8" fill="none" stroke-width="2" stroke-linecap="round"><path d="M200 172 q7 -4 14 0"/><path d="M20 176 q7 -4 14 0"/></g></svg>`,
+  /* Sheikh Salman bin Ahmed Fort (Riffa): walls + tall tower, overlooking a valley */
+  fortB:()=>`<svg viewBox="0 0 240 180">${sky()}
+    <path d="M0 150 Q60 140 120 146 Q190 152 240 140 L240 180 L0 180Z" fill="url(#gSand)"/>
+    <path d="M0 162 Q80 156 150 168 Q200 174 240 166 L240 180 L0 180Z" fill="#d9b06c" opacity=".7"/>
+    ${shadow(120,146,100,8)}
+    ${box(26,94,168,50,16)}${crenF(26,94,168)}
+    ${box(60,34,50,110,16,'url(#gWallF)','url(#gWallS)','#fbecc8')}${crenF(60,34,50,10,8)}
+    ${win(74,50)}${win(92,50)}${win(74,78)}${win(92,78)}${win(150,108,8,14)}${win(172,108,8,14)}
+    ${door(124,112,24,32)}
+    ${palm(214,152,.85)}${palm(16,150,.7)}</svg>`,
+  /* Bu Maher Fort: small fort with round tower at the water's edge */
+  fortC:()=>`<svg viewBox="0 0 240 180">${sky()}
+    ${waterBand(124)}
+    <g opacity=".12" transform="translate(0,252) scale(1,-1)">${box(48,86,100,38,14)}${cyl(168,46,124,22)}</g>
+    <path d="M28 130 L214 130 L204 118 L36 118Z" fill="url(#gWallS)" stroke="${SK}" stroke-width="1.4"/>
+    ${box(48,82,100,38,14)}${crenF(48,82,100)}
+    ${cyl(170,44,122,22)}
+    ${win(164,62,8,14)}${win(164,92,8,14)}${door(86,96,20,24)}${win(62,94)}
+    <path d="M118 30 l0 -14" stroke="#5a3515" stroke-width="2"/></svg>`,
+  /* Barbar Temple: stone terraces, stairs, sacred well */
+  templeA:()=>`<svg viewBox="0 0 240 180">${sky()}${ground(132)}
+    ${shadow(118,146,112,8,.25)}
+    ${box(14,112,190,32,18,'url(#gStoneF)','url(#gStoneS)','#f4dfb0')}
+    ${box(44,84,130,30,16,'url(#gStoneF)','url(#gStoneS)','#f4dfb0')}
+    ${box(76,58,70,28,14,'url(#gStoneF)','url(#gStoneS)','#f4dfb0')}
+    <g stroke="${SK}" stroke-width="1.2">${[0,1,2,3,4,5,6,7].map(k=>`<rect x="${98-k*1.2}" y="${60+k*10.5}" width="${26+k*2.4}" height="6" fill="#f6e4b8"/><rect x="${98-k*1.2}" y="${66+k*10.5}" width="${26+k*2.4}" height="4.5" fill="#cfa96c"/>`).join('')}</g>
+    <ellipse cx="200" cy="160" rx="30" ry="11" fill="url(#gStoneS)" stroke="${SK}" stroke-width="1.6"/>
+    <ellipse cx="200" cy="157" rx="24" ry="8" fill="url(#gWater)"/>
+    <ellipse cx="193" cy="155" rx="8" ry="2" fill="#fff" opacity=".8"/>
+    <g fill="url(#gStoneF)" stroke="${SK}" stroke-width="1"><rect x="20" y="152" width="12" height="7" rx="2"/><rect x="150" y="158" width="9" height="6" rx="2"/></g></svg>`,
+  /* Diraz Temple: platform with remaining column bases */
+  templeB:()=>{const cols=[[46,86,24],[84,86,36],[122,86,28],[160,86,40],[64,112,30],[102,112,20],[140,112,34],[178,112,26]]
+      .map(([x,y,h])=>`${shadow(x+5,y+3,13,3.5,.3)}${cyl(x,y-h,y,10)}`).join('');
+    return `<svg viewBox="0 0 240 180">${sky()}${ground(130)}
+    ${shadow(120,150,112,9,.25)}
+    ${box(12,120,196,26,20,'url(#gStoneF)','url(#gStoneS)','#f2dcab')}
+    <path d="M12 120 L32 109 L228 109 L208 120Z" fill="#ecd29c"/>
+    ${cols}
+    <g transform="translate(36,160) rotate(-8)"><rect x="0" y="-7" width="30" height="14" rx="3" fill="url(#gCyl)" stroke="${SK}" stroke-width="1.4"/><ellipse cx="30" cy="0" rx="4" ry="7" fill="#f5e2b6" stroke="${SK}" stroke-width="1.2"/></g></svg>`;},
+  /* A'ali Royal Mounds */
+  moundsA:()=>{const m=[[40,150,30,22],[204,150,28,20],[120,154,60,50],[78,160,22,15],[166,162,22,14],[18,166,16,10],[228,168,14,9]]
+      .map(([x,y,rx,ry])=>`<ellipse cx="${x+rx*.35}" cy="${y+2}" rx="${rx*1.05}" ry="${Math.max(3,ry*.16)}" fill="#5a3a1c" opacity=".22"/>
+      <path d="M${x-rx} ${y} A${rx} ${ry*2} 0 0 1 ${x+rx} ${y}Z" fill="url(#gDome)" stroke="${SK}" stroke-width="1.4"/>
+      <path d="M${x-rx*.55} ${y-ry*.7} A${rx} ${ry*2} 0 0 1 ${x+rx*.05} ${y-ry*1.4}" stroke="#fff3cf" stroke-width="${Math.max(2,rx/10)}" fill="none" stroke-linecap="round" opacity=".7"/>`).join('');
+    return `<svg viewBox="0 0 240 180">${sky()}${ground(142)}
+    <path d="M0 176 Q120 164 240 178" stroke="#c99a5c" stroke-width="5" fill="none" opacity=".5"/>${m}
+    <g fill="#7a9a3a"><circle cx="150" cy="172" r="3"/><circle cx="154" cy="171" r="2.5"/><circle cx="58" cy="174" r="2.5"/></g></svg>`;},
+  /* Saar burial complex: honeycomb of stone-walled graves */
+  moundsB:()=>{let h='';const R=14;
+    for(let r=0;r<5;r++)for(let c=0;c<8;c++){const x=16+c*R*1.75+(r%2?R*.87:0),y=84+r*R*1.5*.62;
+      const hex=(rr,dy=0,sy=.62)=>{let p='';for(let k=0;k<6;k++){const a=Math.PI/3*k+Math.PI/6;p+=(k?'L':'M')+(x+rr*Math.cos(a)).toFixed(1)+' '+(y+dy+rr*sy*Math.sin(a)).toFixed(1);}return p+'Z';};
+      h+=`<path d="${hex(R,2)}" fill="#b48a52"/><path d="${hex(R)}" fill="#e9cf98" stroke="${SK}" stroke-width="1.2"/><path d="${hex(R*.7,1)}" fill="url(#gPit)"/>`;}
+    return `<svg viewBox="0 0 240 180">${sky()}${ground(66)}${h}
+    <rect y="66" width="240" height="14" fill="url(#gSky)" opacity=".25"/></svg>`;}
+};
+/* shared gradient/pattern defs, injected once into the page */
+const DEFS = `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+ <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fc2ee"/><stop offset=".6" stop-color="#b7e2f7"/><stop offset="1" stop-color="#ffeac4"/></linearGradient>
+ <radialGradient id="gSunGlow"><stop offset="0" stop-color="#fff6c4" stop-opacity=".95"/><stop offset=".45" stop-color="#ffe27a" stop-opacity=".55"/><stop offset="1" stop-color="#ffe27a" stop-opacity="0"/></radialGradient>
+ <linearGradient id="gSand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4dca6"/><stop offset="1" stop-color="#d7b06d"/></linearGradient>
+ <linearGradient id="gMound" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eccb8d"/><stop offset=".6" stop-color="#d1a464"/><stop offset="1" stop-color="#b3864b"/></linearGradient>
+ <linearGradient id="gWater" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5cc6ea"/><stop offset="1" stop-color="#1b7fb8"/></linearGradient>
+ <linearGradient id="gWallF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6e1b2"/><stop offset="1" stop-color="#e2bf82"/></linearGradient>
+ <linearGradient id="gWallS" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c79c5f"/><stop offset="1" stop-color="#a97f45"/></linearGradient>
+ <linearGradient id="gStoneF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9cd93"/><stop offset="1" stop-color="#cfa96a"/></linearGradient>
+ <linearGradient id="gStoneS" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b98f55"/><stop offset="1" stop-color="#9a743f"/></linearGradient>
+ <linearGradient id="gCyl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c79c5f"/><stop offset=".3" stop-color="#f7e4b8"/><stop offset=".6" stop-color="#e3c086"/><stop offset="1" stop-color="#a77d44"/></linearGradient>
+ <radialGradient id="gDome" cx=".35" cy=".25" r=".85"><stop offset="0" stop-color="#f6dca4"/><stop offset=".55" stop-color="#d9ae6c"/><stop offset="1" stop-color="#ad8148"/></radialGradient>
+ <radialGradient id="gPit" cx=".5" cy=".35" r=".7"><stop offset="0" stop-color="#9b7442"/><stop offset="1" stop-color="#c9a066"/></radialGradient>
+ <linearGradient id="gDoor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5326"/><stop offset="1" stop-color="#5a3313"/></linearGradient>
+ <linearGradient id="gLeaf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6cc25a"/><stop offset="1" stop-color="#2f7d3a"/></linearGradient>
+ <pattern id="pCourse" width="22" height="9" patternUnits="userSpaceOnUse"><path d="M0 8.5 H22 M11 0 V4.5 M0 4.5 H22" stroke="#9c7443" stroke-width=".7" opacity=".28" fill="none"/></pattern>
+ <linearGradient id="gHull" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b47a40"/><stop offset=".5" stop-color="#8a5529"/><stop offset="1" stop-color="#5a3416"/></linearGradient>
+ <linearGradient id="gSail" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#fbf3df"/><stop offset="1" stop-color="#e6d6b0"/></linearGradient>
+ <linearGradient id="gWood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b97d42"/><stop offset="1" stop-color="#7d4a1f"/></linearGradient>
+ <linearGradient id="gWoodL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cf9555"/><stop offset="1" stop-color="#94592a"/></linearGradient>
+ <linearGradient id="gGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe680"/><stop offset=".5" stop-color="#f2bf2c"/><stop offset="1" stop-color="#b9860f"/></linearGradient>
+ <radialGradient id="gFace" cx=".45" cy=".4" r=".7"><stop offset="0" stop-color="#d9a06c"/><stop offset="1" stop-color="#b47645"/></radialGradient>
+ <linearGradient id="gThobe" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e9e8df"/><stop offset=".4" stop-color="#ffffff"/><stop offset="1" stop-color="#dcdad0"/></linearGradient>
+ <radialGradient id="gRays" cx=".5" cy="1" r="1"><stop offset="0" stop-color="#fff3a8" stop-opacity=".95"/><stop offset="1" stop-color="#fff3a8" stop-opacity="0"/></radialGradient>
+ <linearGradient id="gPin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd84d"/><stop offset="1" stop-color="#e09a10"/></linearGradient>
+ <filter id="fDrop" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000" flood-opacity=".35"/></filter>
+</defs></svg>`;
+
+const ICON = {
+  fort:`<svg viewBox="0 0 60 50"><rect x="8" y="18" width="44" height="30" fill="url(#gWallF)" stroke="#5a3515" stroke-width="2.5"/><g fill="url(#gWallF)" stroke="#5a3515" stroke-width="2.5"><rect x="8" y="10" width="9" height="9"/><rect x="25.5" y="10" width="9" height="9"/><rect x="43" y="10" width="9" height="9"/></g><path d="M23 48 v-11 a7 7 0 0 1 14 0 v11z" fill="url(#gDoor)"/></svg>`,
+  temple:`<svg viewBox="0 0 60 50"><rect x="4" y="40" width="52" height="8" fill="url(#gStoneF)" stroke="#5a3515" stroke-width="2.5"/><rect x="11" y="32" width="38" height="8" fill="url(#gStoneF)" stroke="#5a3515" stroke-width="2.5"/><g fill="url(#gCyl)" stroke="#5a3515" stroke-width="2.5"><rect x="15" y="11" width="7" height="21"/><rect x="26.5" y="11" width="7" height="21"/><rect x="38" y="11" width="7" height="21"/></g><path d="M8 11 L30 3 L52 11Z" fill="url(#gStoneF)" stroke="#5a3515" stroke-width="2.5" stroke-linejoin="round"/></svg>`,
+  mound:`<svg viewBox="0 0 60 50"><g fill="url(#gDome)" stroke="#5a3515" stroke-width="2.5"><path d="M2 46 A13 16 0 0 1 28 46Z"/><path d="M32 46 A13 16 0 0 1 58 46Z"/><path d="M14 46 A16 24 0 0 1 46 46Z"/></g></svg>`
+};
+
+const SHIP = `<g transform="translate(-66,-84)">
+  <ellipse cx="66" cy="96" rx="58" ry="7" fill="#0b4870" opacity=".35"/>
+  <g class="wake" fill="none" stroke="#fff" stroke-linecap="round" opacity=".8"><path d="M14 92 q-14 4 -30 2" stroke-width="3"/><path d="M18 97 q-16 6 -36 6" stroke-width="2"/></g>
+  <path d="M8 62 L22 60 L20 72 Z" fill="#7a4a22" stroke="#4a2a0f" stroke-width="2"/>
+  <path d="M10 68 Q22 94 64 96 L104 94 Q120 86 128 58 L108 68 L14 68Z" fill="url(#gHull)" stroke="#4a2a0f" stroke-width="3" stroke-linejoin="round"/>
+  <g stroke="#4a2a0f" stroke-width="1.2" opacity=".55" fill="none"><path d="M16 76 Q60 80 112 76"/><path d="M22 84 Q62 88 104 84"/></g>
+  <path d="M14 68 L108 68" stroke="#e0b07a" stroke-width="4"/>
+  <path d="M16 74 L110 72" stroke="#d6a062" stroke-width="3"/>
+  <g fill="#f4e3c0" stroke="#4a2a0f" stroke-width="1.5"><circle cx="40" cy="81" r="3.2"/><circle cx="62" cy="83" r="3.2"/><circle cx="84" cy="81" r="3.2"/></g>
+  <path d="M62 68 L66 8" stroke="#5a3515" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M28 26 L118 4" stroke="#5a3515" stroke-width="4" stroke-linecap="round"/>
+  <path d="M31 27 Q72 30 114 6 Q112 46 70 66 Q50 52 31 27Z" fill="url(#gSail)" stroke="#cdb98a" stroke-width="2"/>
+  <g stroke="#e3d3ad" stroke-width="1.5" fill="none"><path d="M46 36 Q80 34 108 14"/><path d="M58 48 Q86 42 106 26"/></g>
+  <g stroke="#6b4a2a" stroke-width="1" opacity=".7"><path d="M66 10 L118 62"/><path d="M28 27 L14 66"/></g>
+  <g transform="translate(14,34)"><rect x="-1.5" y="0" width="3" height="32" fill="#5a3515"/>
+    <g class="flag"><rect x="1.5" y="1" width="28" height="16" fill="#ce1126"/><path d="M1.5 1 H8 L12 2.6 L8 4.2 L12 5.8 L8 7.4 L12 9 L8 10.6 L12 12.2 L8 13.8 L12 15.4 L8 17 H1.5Z" fill="#fff"/></g></g>
+</g>`;
+
+const CAPTAIN = `<svg viewBox="0 0 200 260">
+  <path d="M18 260 Q20 178 100 170 Q180 178 182 260Z" fill="url(#gThobe)" stroke="#cfcdc0" stroke-width="3"/>
+  <path d="M100 178 L100 236" stroke="#cfcdc0" stroke-width="3"/><circle cx="100" cy="194" r="3.2" fill="url(#gGold)"/><circle cx="100" cy="210" r="3.2" fill="url(#gGold)"/>
+  <path d="M36 96 Q34 36 100 30 Q166 36 164 96 L172 204 Q150 178 130 170 L70 170 Q50 178 28 204Z" fill="url(#gThobe)" stroke="#d3d1c5" stroke-width="3"/>
+  <g stroke="#dedcd2" stroke-width="2" fill="none"><path d="M44 120 Q46 160 36 196"/><path d="M156 120 Q154 160 164 196"/></g>
+  <ellipse cx="100" cy="110" rx="44" ry="52" fill="url(#gFace)"/>
+  <ellipse cx="58" cy="112" rx="6" ry="10" fill="#b47645"/><ellipse cx="142" cy="112" rx="6" ry="10" fill="#b47645"/>
+  <path d="M54 84 Q100 64 146 84 L146 70 Q100 50 54 70Z" fill="#ffffff" stroke="#d3d1c5" stroke-width="2"/>
+  <path d="M60 80 Q100 66 140 80" stroke="#e5e3d9" stroke-width="2" fill="none"/>
+  <ellipse cx="100" cy="57" rx="58" ry="13" fill="none" stroke="#1d1d1d" stroke-width="7.5"/>
+  <ellipse cx="100" cy="49" rx="56" ry="11" fill="none" stroke="#2a2a2a" stroke-width="6.5"/>
+  <path d="M60 44 Q100 36 140 44" stroke="#555" stroke-width="1.5" fill="none" opacity=".7"/>
+  <path d="M64 92 q10 -6 20 0" stroke="#4a3320" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M116 92 q10 -6 20 0" stroke="#4a3320" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <ellipse cx="80" cy="104" rx="5.5" ry="6.5" fill="#2b1a0c"/><ellipse cx="120" cy="104" rx="5.5" ry="6.5" fill="#2b1a0c"/><circle cx="82" cy="101.5" r="2" fill="#fff"/><circle cx="122" cy="101.5" r="2" fill="#fff"/>
+  <ellipse cx="72" cy="122" rx="8" ry="4" fill="#e08a6a" opacity=".35"/><ellipse cx="128" cy="122" rx="8" ry="4" fill="#e08a6a" opacity=".35"/>
+  <path d="M96 106 q4 13 9 0" stroke="#94592f" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M58 118 Q60 168 100 170 Q140 168 142 118 Q130 142 100 144 Q70 142 58 118Z" fill="#a3a3a3"/>
+  <path d="M66 134 Q100 168 134 134" stroke="#8c8c8c" stroke-width="2" fill="none" opacity=".6"/>
+  <path d="M82 132 Q100 125 118 132" stroke="#7a7a7a" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path class="mouth-shut" d="M90 144 q10 6 20 0" stroke="#5a2d14" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <ellipse class="mouth-open" cx="100" cy="146" rx="9" ry="7" fill="#5a2d14"/>
+</svg>`;
+
+document.body.insertAdjacentHTML("afterbegin",DEFS);
+
+/* ================= HELPERS ================= */
+const $ = s=>document.querySelector(s);
+const stage=$('#stage');
+const MT = p=>[p[0]*1.05-30, p[1]*1.05-50]; // map -> stage coords
+let scale=1;
+function fit(){scale=Math.min(innerWidth/1280,innerHeight/720);stage.style.transform=`scale(${scale})`;}
+addEventListener('resize',fit);fit();
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ================= SOUND ================= */
+let AC=null, soundOn=true, waveNode=null, waveGain=null;
+function ac(){ if(!AC){ try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } return AC; }
+function tone(f,t,d,type='sine',v=.18){const a=ac();if(!a||!soundOn)return;const o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(0,a.currentTime+t);g.gain.linearRampToValueAtTime(v,a.currentTime+t+.02);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+t+d);
+  o.connect(g).connect(a.destination);o.start(a.currentTime+t);o.stop(a.currentTime+t+d+.05);}
+const sfx={
+  good(){[523,659,784,1047].forEach((f,i)=>tone(f,i*.09,.35,'triangle',.2));tone(1568,.4,.5,'sine',.08);},
+  bad(){tone(240,0,.18,'square',.07);tone(180,.17,.3,'square',.07);},
+  horn(){tone(147,0,.9,'sawtooth',.05);tone(220,0,.9,'triangle',.08);},
+  pop(){tone(660,0,.12,'sine',.15);tone(990,.06,.14,'sine',.1);},
+  win(){[523,659,784,659,784,1047,1319].forEach((f,i)=>tone(f,i*.13,.4,'triangle',.18));}
+};
+function startWaves(){const a=ac();if(!a||waveNode)return;const len=a.sampleRate*2,buf=a.createBuffer(1,len,a.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=Math.random()*2-1;waveNode=a.createBufferSource();waveNode.buffer=buf;waveNode.loop=true;
+  const lp=a.createBiquadFilter();lp.type='lowpass';lp.frequency.value=420;waveGain=a.createGain();waveGain.gain.value=soundOn?.035:0;
+  const lfo=a.createOscillator(),lg=a.createGain();lfo.frequency.value=.12;lg.gain.value=.02;lfo.connect(lg).connect(waveGain.gain);lfo.start();
+  waveNode.connect(lp).connect(waveGain).connect(a.destination);waveNode.start();}
+$('#soundBtn').onclick=()=>{soundOn=!soundOn;$('#soundBtn').textContent=soundOn?'🔊':'🔇';if(waveGain)waveGain.gain.value=soundOn?.035:0;};
+$('#fsBtn').onclick=async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen();}catch(e){}};
+
+/* ================= BUILD SCENE ================= */
+$('#shipBob').innerHTML=SHIP;
+$('#introShip').innerHTML=`<g transform="translate(70,84)">${SHIP}</g>`;
+$('#captain').innerHTML=CAPTAIN;
+document.querySelectorAll('.chest').forEach(ch=>{
+  const c=ch.dataset.cat;
+  ch.innerHTML=`<svg viewBox="0 0 190 130">
+    <g class="rays"><path d="M95 60 L40 -40 L70 -40Z M95 60 L85 -50 L105 -50Z M95 60 L120 -40 L150 -40Z" fill="url(#gRays)"/><ellipse cx="95" cy="54" rx="64" ry="14" fill="#fff3a8" opacity=".8"/></g>
+    <ellipse cx="95" cy="126" rx="82" ry="7" fill="#000" opacity=".25"/>
+    <rect x="18" y="52" width="154" height="72" rx="8" fill="url(#gWood)" stroke="#3a210b" stroke-width="4"/>
+    <g stroke="#5a3515" stroke-width="1.5" opacity=".6"><path d="M22 66 H168 M22 98 H168 M22 112 H168"/></g>
+    <rect x="18" y="74" width="154" height="10" fill="url(#gGold)" stroke="#3a210b" stroke-width="2"/>
+    <rect x="32" y="52" width="13" height="72" fill="url(#gGold)" stroke="#3a210b" stroke-width="2"/><rect x="145" y="52" width="13" height="72" fill="url(#gGold)" stroke="#3a210b" stroke-width="2"/>
+    <g fill="#7a5508"><circle cx="38.5" cy="60" r="2"/><circle cx="38.5" cy="116" r="2"/><circle cx="151.5" cy="60" r="2"/><circle cx="151.5" cy="116" r="2"/></g>
+    <rect x="64" y="86" width="62" height="34" rx="6" fill="#fff6dc" stroke="#3a210b" stroke-width="2"/>
+    <g transform="translate(67,84)">${ICON[c].replace('<svg viewBox="0 0 60 50">','<svg width="56" height="38" viewBox="0 0 60 50">')}</g>
+    <g class="lid"><path d="M14 54 Q14 12 95 10 Q176 12 176 54Z" fill="url(#gWoodL)" stroke="#3a210b" stroke-width="4"/>
+      <path d="M30 30 Q95 16 160 30" stroke="#fff" stroke-width="3" fill="none" opacity=".25"/>
+      <path d="M38.5 52 Q38.5 22 45 17" stroke="url(#gGold)" stroke-width="12" fill="none"/><path d="M151.5 52 Q151.5 22 145 17" stroke="url(#gGold)" stroke-width="12" fill="none"/>
+      <rect x="82" y="40" width="26" height="22" rx="4" fill="url(#gGold)" stroke="#3a210b" stroke-width="2.5"/><circle cx="95" cy="49" r="3" fill="#3a210b"/><rect x="94" y="49" width="2" height="7" fill="#3a210b"/></g>
+  </svg><div class="plaque">${CATS[c].name}</div><div class="cnt">0</div>`;
+});
+
+/* ================= STATE ================= */
+let idx=-1, stars=0, tries=0, canDrop=false, done={fort:[],temple:[],mound:[]}, shipPos=[...START], trail=[];
+const order = SITES.map((s,i)=>i);
+
+function say(t,ms){const b=$('#bubble'),c=$('#captain');$('#bubbleTxt').innerHTML=t;b.classList.add('show');c.classList.add('talk');
+  clearTimeout(say._t);say._t=setTimeout(()=>c.classList.remove('talk'),ms||Math.min(3500,600+t.length*45));}
+function setStars(){$('#starCount').textContent=stars;}
+
+function setShip(p,dir){shipPos=p;$('#ship').setAttribute('transform',`translate(${p[0]},${p[1]})`);
+  if(dir!==undefined)$('#shipFlip').setAttribute('transform',dir<0?'scale(-1,1)':'');}
+function catmull(pts,n=14){ if(pts.length<3)return pts; const out=[];const P=[pts[0],...pts,pts[pts.length-1]];
+  for(let i=1;i<P.length-2;i++){for(let t=0;t<n;t++){const s=t/n,s2=s*s,s3=s2*s;const f=(a,b,c,d)=>.5*((2*b)+(-a+c)*s+(2*a-5*b+4*c-d)*s2+(-a+3*b-3*c+d)*s3);
+    out.push([f(P[i-1][0],P[i][0],P[i+1][0],P[i+2][0]),f(P[i-1][1],P[i][1],P[i+1][1],P[i+2][1])]);}}
+  out.push(pts[pts.length-1]);return out;}
+function sail(points){return new Promise(res=>{
+  const path=catmull([shipPos,...points]);const segs=[];let total=0;
+  for(let i=1;i<path.length;i++){const d=Math.hypot(path[i][0]-path[i-1][0],path[i][1]-path[i-1][1]);segs.push(d);total+=d;}
+  const dur=Math.max(1400,total*9);const t0=performance.now();
+  function step(now){let k=Math.min(1,(now-t0)/dur);const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;let target=e*total,i=0;
+    while(i<segs.length-1&&target>segs[i]){target-=segs[i];i++;}
+    const a=path[i],b=path[i+1]||path[i],r=segs[i]?target/segs[i]:1;const p=[a[0]+(b[0]-a[0])*r,a[1]+(b[1]-a[1])*r];
+    if(Math.abs(b[0]-a[0])>.4)setShip(p,b[0]-a[0]);else setShip(p);
+    if(!trail.length||Math.hypot(p[0]-trail[trail.length-1][0],p[1]-trail[trail.length-1][1])>6){trail.push(p);$('#trail').setAttribute('points',trail.map(q=>q.join(',')).join(' '));}
+    if(k<1)requestAnimationFrame(step);else res();}
+  requestAnimationFrame(step);});}
+
+function marker(i,state){let g=document.getElementById('mk'+i);const s=SITES[order[i]];
+  if(!g){g=document.createElementNS('http://www.w3.org/2000/svg','g');g.id='mk'+i;g.setAttribute('transform',`translate(${s.land[0]},${s.land[1]})`);$('#markers').appendChild(g);}
+  if(state==='active')g.innerHTML=`<circle r="8" fill="none" stroke="#ffd84d" stroke-width="3"><animate attributeName="r" values="6;26" dur="1.3s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur="1.3s" repeatCount="indefinite"/></circle><ellipse cx="0" cy="2" rx="9" ry="3" fill="#000" opacity=".25"/><g filter="url(#fDrop)"><path d="M0 0 C-4 -8 -14 -14 -14 -26 A14 14 0 0 1 14 -26 C14 -14 4 -8 0 0Z" fill="url(#gPin)" stroke="#fff" stroke-width="2.5"/></g><text y="-20" text-anchor="middle" font-size="16" font-weight="800" fill="#5a3515" font-family="Tajawal">؟</text>`;
+  else{const col={fort:'#d8452f',temple:'#2b8fc7',mound:'#8c6416'}[s.cat];
+    g.innerHTML=`<ellipse cx="0" cy="2" rx="9" ry="3" fill="#000" opacity=".25"/><g filter="url(#fDrop)"><path d="M0 0 C-4 -8 -16 -15 -16 -28 A16 16 0 0 1 16 -28 C16 -15 4 -8 0 0Z" fill="${col}" stroke="#fff" stroke-width="2.5"/><circle cy="-28" r="11.5" fill="#fff8e4"/></g><g transform="translate(-10,-36)">${ICON[s.cat].replace('<svg viewBox="0 0 60 50">','<svg width="20" height="17" viewBox="0 0 60 50">')}</g>`;}}
+
+async function go(i){
+  idx=i; canDrop=false; tries=0;
+  const s=SITES[order[i]];
+  $('#stationLbl').textContent=`المحطة ${i+1} من ${SITES.length}`;
+  $('#lensBox').classList.remove('show','pulse');$('#scroll').classList.remove('show');$('#rise').classList.remove('show');
+  say(i===0?'أهلاً بك يا بحّار! أنا النوخذة. هيا نبحر لنكتشف آثار بلادي ⛵':['هيا إلى الأثر التالي!','ارفعوا الشراع… إلى المحطة التالية!','البحر هادئ، لنكمل رحلتنا ⛵'][i%3]);
+  sfx.horn();
+  await sail([...s.via,s.dock]);
+  marker(i,'active');
+  // rising building on the map
+  const p=MT(s.land);const r=$('#rise');r.innerHTML=ART[s.art]();r.style.left=p[0]+'px';r.style.top=(p[1]-8)+'px';
+  await sleep(50);r.classList.add('show');sfx.pop();
+  await sleep(900);
+  // show in spyglass
+  $('#lensArt').innerHTML=ART[s.art]();$('#lensName').textContent='أثر غامض ❓';$('#lensName').classList.remove('found');
+  $('#lensBox').classList.add('show','pulse');$('#dragHint').style.display='';
+  $('#scroll').innerHTML=`<b>يقول الأثر:</b> «${s.clue}»`;$('#scroll').classList.add('show');
+  r.classList.remove('show');
+  say('وجدنا أثراً! انظر في المنظار واقرأ ما يقوله… ثم اسحبه إلى الصندوق الصحيح.');
+  canDrop=true;
+}
+
+/* ================= DRAG ================= */
+const lens=$('#lens'), lensBox=$('#lensBox');
+let drag=null;
+function stagePt(e){const r=stage.getBoundingClientRect();return [(e.clientX-r.left)/scale,(e.clientY-r.top)/scale];}
+function chestAt(p){let hit=null;document.querySelectorAll('.chest').forEach(ch=>{const x=parseFloat(ch.style.left),y=720-22-150;
+  if(p[0]>x-25&&p[0]<x+215&&p[1]>y-50&&p[1]<720)hit=ch;});return hit;}
+lens.addEventListener('pointerdown',e=>{if(!canDrop)return;e.preventDefault();lens.setPointerCapture(e.pointerId);
+  const p=stagePt(e);drag={p0:p,moved:false};lens.classList.add('drag');lensBox.style.transition='none';$('#dragHint').style.display='none';});
+lens.addEventListener('pointermove',e=>{if(!drag)return;const p=stagePt(e);const dx=p[0]-drag.p0[0],dy=p[1]-drag.p0[1];
+  if(Math.hypot(dx,dy)>6)drag.moved=true;lensBox.style.transform=`translate(${dx}px,${dy}px) scale(.62)`;
+  document.querySelectorAll('.chest').forEach(c=>c.classList.toggle('hot',c===chestAt(p)));});
+lens.addEventListener('pointerup',e=>{if(!drag)return;const p=stagePt(e);lens.classList.remove('drag');
+  document.querySelectorAll('.chest').forEach(c=>c.classList.remove('hot'));
+  const ch=drag.moved?chestAt(p):null;drag=null;
+  if(ch)attempt(ch.dataset.cat,ch,true);else snapBack();});
+lens.addEventListener('pointercancel',()=>{drag=null;snapBack();});
+function snapBack(){lensBox.style.transition='transform .4s cubic-bezier(.3,1.6,.5,1)';lensBox.style.transform='';}
+document.querySelectorAll('.chest').forEach(ch=>ch.addEventListener('click',()=>{if(canDrop&&!drag)attempt(ch.dataset.cat,ch,false);}));
+
+async function attempt(cat,ch,fromDrag){
+  const s=SITES[order[idx]];
+  if(cat===s.cat){
+    canDrop=false;sfx.good();if(tries===0){stars++;setStars();}
+    $('#lensName').textContent='✔ '+s.name;$('#lensName').classList.add('found');lensBox.classList.remove('pulse');
+    snapBack();
+    ch.classList.add('open');await sleep(250);
+    // fly art into chest
+    const lr=lensBox.getBoundingClientRect(),sr=stage.getBoundingClientRect();
+    const fx=(lr.left-sr.left)/scale+10,fy=(lr.top-sr.top)/scale+10;const f=document.createElement('div');f.id='fly';f.innerHTML=ART[s.art]();
+    Object.assign(f.style,{left:fx+'px',top:fy+'px',width:'260px',height:'260px'});stage.appendChild(f);
+    const tx=parseFloat(ch.style.left)+95-130,ty=720-22-150+40-130;
+    await f.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${tx-fx}px,${ty-fy-120}px) scale(.45)`,offset:.6},{transform:`translate(${tx-fx}px,${ty-fy}px) scale(.08)`,opacity:.6}],{duration:900,easing:'ease-in-out',fill:'forwards'}).finished;
+    f.remove();burst(parseFloat(ch.style.left)+95,560,40);
+    ch.classList.remove('open');ch.classList.add('ok');setTimeout(()=>ch.classList.remove('ok'),700);
+    done[cat].push(s.name);ch.querySelector('.cnt').textContent=done[cat].length;marker(idx,'done');
+    say(`${PRAISE[idx%PRAISE.length]}<br><b>${s.name}</b> من ${CATS[cat].name === 'مدافن' ? 'المدافن' : CATS[cat].name === 'قلاع' ? 'القلاع' : 'المعابد'}.`);
+    await sleep(2300);
+    $('#lensBox').classList.remove('show');$('#scroll').classList.remove('show');
+    await sleep(400);
+    if(idx<SITES.length-1)go(idx+1);else finish();
+  }else{
+    tries++;sfx.bad();ch.classList.remove('bad');void ch.offsetWidth;ch.classList.add('bad');snapBack();
+    say(`حاول مرة أخرى 💪<br>${HINTS[s.cat]}`,3500);
+  }
+}
+
+async function finish(){
+  $('#stationLbl').textContent='العودة إلى الميناء';say('أحسنتم يا بحّارة! صناديقنا مليئة بآثار بلادي… لنعد إلى الميناء ⚓');sfx.horn();
+  await sail([...PORT.via,PORT.dock]);
+  sfx.win();
+  const cols=['fort','temple','mound'].map(c=>`<div class="rcol"><h3>${ICON[c]} ${CATS[c].name}</h3><ul>${done[c].map(n=>`<li>${n}</li>`).join('')}</ul></div>`).join('');
+  $('#results').innerHTML=cols;
+  $('#endStars').textContent='⭐'.repeat(stars)+'☆'.repeat(SITES.length-stars);
+  $('#cert').textContent= stars>=6?'🏅 شهادة: قبطان الآثار الماهر':stars>=4?'🏅 شهادة: بحّار الآثار المجتهد':'🏅 شهادة: بحّار الآثار الصغير';
+  $('#end').classList.remove('hide');confettiRain();
+}
+
+function reset(){idx=-1;stars=0;tries=0;done={fort:[],temple:[],mound:[]};trail=[];setStars();$('#trail').setAttribute('points','');$('#markers').innerHTML='';
+  document.querySelectorAll('.chest .cnt').forEach(c=>c.textContent='0');setShip([...START],-1);}
+
+/* ================= CONFETTI ================= */
+const cv=$('#confetti'),cx=cv.getContext('2d');cx.scale(2,2);let parts=[],raf=null;
+function burst(x,y,n){for(let i=0;i<n;i++)parts.push({x,y,star:i%2===0,vx:(Math.random()-.5)*9,vy:-Math.random()*9-3,g:.35,r:4+Math.random()*6,c:['#f4c430','#ffffff','#ce1126','#3cc073','#2b8fc7'][i%5],life:70,rot:Math.random()*6});loop();}
+function confettiRain(){for(let i=0;i<160;i++)parts.push({x:Math.random()*1280,y:-Math.random()*400,vx:(Math.random()-.5)*2,vy:Math.random()*2+2,g:.04,r:5+Math.random()*5,c:['#f4c430','#ffffff','#ce1126','#3cc073','#2b8fc7'][i%5],life:260,rot:Math.random()*6});loop();}
+function loop(){if(raf)return;const f=()=>{cx.clearRect(0,0,1280,720);parts=parts.filter(p=>p.life-->0);
+  parts.forEach(p=>{p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;p.rot+=.15;cx.save();cx.translate(p.x,p.y);cx.rotate(p.rot);cx.fillStyle=p.c;if(p.star){cx.beginPath();for(let k=0;k<10;k++){const rr=k%2?p.r*.45:p.r;const a=k*Math.PI/5-Math.PI/2;cx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}cx.fill();}else cx.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);cx.restore();});
+  if(parts.length)raf=requestAnimationFrame(f);else{raf=null;cx.clearRect(0,0,1280,720);}};raf=requestAnimationFrame(f);}
+
+/* ================= AMBIENT ANIM ================= */
+let wt=0;(function amb(){wt+=.4;$('#wavesLayer').setAttribute('transform',`translate(${(wt%90)-90},${Math.sin(wt/40)*4})`);
+  const b=Math.sin(performance.now()/450)*3;$('#shipBob').setAttribute('transform',`translate(0,${b.toFixed(2)}) rotate(${(b*.8).toFixed(2)}) scale(.86)`);
+  document.querySelectorAll('.gull').forEach((g,i)=>{const t=performance.now()/1000+i*3;const x=[300,340,900][i]+((t*25)%300)-150,y=[90,120,120][i]+Math.sin(t*1.3)*8;g.setAttribute('transform',`translate(${x},${y})`);});
+  requestAnimationFrame(amb);})();
+
+/* ================= BUTTONS ================= */
+setShip([...START],-1);
+$('#startBtn').onclick=()=>{ac();startWaves();$('#intro').classList.add('hide');reset();go(0);};
+$('#againBtn').onclick=()=>{$('#end').classList.add('hide');reset();go(0);};
+const showInfo=()=>$('#info').classList.remove('hide');
+$('#infoBtn').onclick=showInfo;$('#introInfo').onclick=showInfo;$('#endInfo').onclick=showInfo;$('#closeInfo').onclick=()=>$('#info').classList.add('hide');
+</script>
+</body>
+</html>
